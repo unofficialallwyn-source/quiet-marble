@@ -6,3 +6,5 @@
 
 .controls{flex-wrap:wrap}.controls .sound-toggle{min-width:108px;background:#f1f4eb}.controls .sound-toggle[aria-pressed="false"]{color:#7c8873;background:transparent}
 @media(max-width:380px){.controls{gap:7px}.controls button{padding:10px 12px}.controls .sound-toggle{min-width:100px}}
+
+.score-list{max-height:420px;overflow-y:auto}

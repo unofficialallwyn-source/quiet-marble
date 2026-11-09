@@ -11,33 +11,63 @@ export function pool(){
  }
  return poolPromise;
 }
+// One short transaction serializes leaderboard changes across all API instances.
+// Cleanup is request-driven: no scheduler, extra table, or background service.
+const begin = `SET XACT_ABORT ON; BEGIN TRANSACTION;
+ DECLARE @lockResult int;
+ EXEC @lockResult=sys.sp_getapplock @Resource='qm:retention',
+ @LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;
+ IF @lockResult<0 THROW 50001, 'Leaderboard busy', 1;`;
+const cleanup = `
+ DELETE FROM dbo.rounds WHERE finished=0 AND started<=@cutoff;
+ ;WITH personal AS (
+  SELECT *,ROW_NUMBER() OVER(PARTITION BY game,player
+   ORDER BY remaining_count,moves,seconds,started,id) AS place
+  FROM dbo.rounds WHERE finished=1
+ ) DELETE FROM personal WHERE place>1;
+ ;WITH leaders AS (
+  SELECT *,ROW_NUMBER() OVER(PARTITION BY game
+   ORDER BY remaining_count,moves,seconds,started,id) AS place
+  FROM dbo.rounds WHERE finished=1
+ ) DELETE FROM leaders WHERE place>100;`;
+export const ROUND_TTL_MS=24*60*60*1000;
 export class SqlStore implements Store{
+ constructor(private connect:()=>Promise<sql.ConnectionPool>=pool){}
+ async request(){return (await this.connect()).request().input('cutoff',sql.BigInt,Date.now()-ROUND_TTL_MS)}
  async start(r:Round){
-  const result=await(await pool()).request().input('id',sql.UniqueIdentifier,r.id).input('player',sql.UniqueIdentifier,r.player).input('game',sql.VarChar(10),r.game).input('started',sql.BigInt,r.started).input('lock',sql.NVarChar(255),'qm:'+r.player).query(`
-   SET XACT_ABORT ON; BEGIN TRANSACTION;
-   DECLARE @lockResult int;
-   EXEC @lockResult=sys.sp_getapplock @Resource=@lock,@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=2000;
-   IF @lockResult<0 BEGIN ROLLBACK; SELECT 0 AS accepted; RETURN; END;
+  const result=await(await this.request()).input('id',sql.UniqueIdentifier,r.id)
+   .input('player',sql.UniqueIdentifier,r.player).input('game',sql.VarChar(10),r.game)
+   .input('started',sql.BigInt,r.started).query(`${begin}${cleanup}
    IF EXISTS(SELECT 1 FROM dbo.rounds WHERE player=@player AND started>@started-1500)
-   BEGIN ROLLBACK; SELECT 0 AS accepted; RETURN; END;
+   BEGIN COMMIT; SELECT 0 AS accepted; RETURN; END;
+   DELETE FROM dbo.rounds WHERE player=@player AND game=@game AND finished=0;
    INSERT dbo.rounds(id,player,game,started) VALUES(@id,@player,@game,@started);
    COMMIT; SELECT 1 AS accepted;`);
   if(!result.recordset[0].accepted)throw new HttpError(429,'Please wait a moment before starting again');
  }
  async get(id:string,player:string):Promise<Round|null>{
-  const r=await(await pool()).request().input('id',sql.UniqueIdentifier,id).input('player',sql.UniqueIdentifier,player).query('SELECT id,player,game,started,finished FROM dbo.rounds WHERE id=@id AND player=@player');
+  const r=await(await this.request()).input('id',sql.UniqueIdentifier,id).input('player',sql.UniqueIdentifier,player)
+   .query('SELECT id,player,game,started,finished FROM dbo.rounds WHERE id=@id AND player=@player AND (finished=1 OR started>@cutoff)');
   const row=r.recordset[0];return row?{...row,id:row.id.toLowerCase(),player:row.player.toLowerCase(),started:Number(row.started)}:null;
  }
  async finish(id:string,player:string,r:Result){
-  const result=await(await pool()).request().input('id',sql.UniqueIdentifier,id).input('player',sql.UniqueIdentifier,player).input('left',sql.Int,r.left).input('moves',sql.Int,r.moves).input('seconds',sql.Int,r.seconds).query('UPDATE dbo.rounds SET finished=1,remaining_count=@left,moves=@moves,seconds=@seconds WHERE id=@id AND player=@player AND finished=0');
-  return result.rowsAffected[0]===1;
+  const result=await(await this.request()).input('id',sql.UniqueIdentifier,id).input('player',sql.UniqueIdentifier,player)
+   .input('left',sql.Int,r.left).input('moves',sql.Int,r.moves).input('seconds',sql.Int,r.seconds)
+   .query(`${begin}
+   UPDATE dbo.rounds SET finished=1,remaining_count=@left,moves=@moves,seconds=@seconds
+    WHERE id=@id AND player=@player AND finished=0 AND started>@cutoff;
+   DECLARE @accepted int=@@ROWCOUNT;
+   ${cleanup}
+   COMMIT; SELECT @accepted AS accepted;`);
+  return result.recordset[0].accepted===1;
  }
  async leaderboard(game:Game){
-  const result=await(await pool()).request().input('game',sql.VarChar(10),game).query(`WITH ranked AS (
-   SELECT player,remaining_count,moves,seconds,ROW_NUMBER() OVER(PARTITION BY player ORDER BY remaining_count,moves,seconds,id) rn
-   FROM dbo.rounds WHERE game=@game AND finished=1)
-   SELECT TOP(10) LOWER(LEFT(CONVERT(varchar(36),player),6)) name,remaining_count [left],moves,seconds
-   FROM ranked WHERE rn=1 ORDER BY remaining_count,moves,seconds,player`);
+  const result=await(await this.request()).input('game',sql.VarChar(10),game).query(`${begin}${cleanup}
+   SELECT TOP(100) LOWER(CONVERT(varchar(36),player)) player,
+    LOWER(LEFT(CONVERT(varchar(36),player),6)) name,remaining_count [left],moves,seconds
+   FROM dbo.rounds WHERE game=@game AND finished=1
+   ORDER BY remaining_count,moves,seconds,started,id;
+   COMMIT;`);
   return result.recordset;
  }
 }

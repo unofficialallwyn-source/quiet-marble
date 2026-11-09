@@ -6,6 +6,7 @@ try{await pool.request().batch(await readFile(new URL('../../infra/schema.sql',i
  const password=process.env.APP_SQL_PASSWORD;
  if(password.length<24)throw Error('APP_SQL_PASSWORD must contain at least 24 characters');
  const escaped=password.replaceAll("'","''");
- await pool.request().batch(`IF DATABASE_PRINCIPAL_ID('qm_app') IS NULL CREATE USER qm_app WITH PASSWORD='${escaped}'; GRANT SELECT, INSERT, UPDATE ON dbo.rounds TO qm_app;`);
+ await pool.request().batch(`IF DATABASE_PRINCIPAL_ID('qm_app') IS NULL CREATE USER qm_app WITH PASSWORD='${escaped}'; `);
  console.log('Database schema and restricted qm_app user ready. Existing user passwords are unchanged.');
-}else console.log('Database schema ready. Set APP_SQL_PASSWORD to create the restricted runtime user.');}finally{await pool.close()}
+}else console.log('Database schema ready. Set APP_SQL_PASSWORD to create the restricted runtime user.');
+await pool.request().batch("IF DATABASE_PRINCIPAL_ID('qm_app') IS NOT NULL GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.rounds TO qm_app;");}finally{await pool.close()}
