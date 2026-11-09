@@ -93,3 +93,29 @@ SQL integration tests run in CI against an isolated SQL Server database and exer
 Players can enter an optional nickname before starting (up to 24 characters). The browser remembers it in sessionStorage for the tab session; it is locked for the current round. The API validates and stores it with that round and displays it only if the score qualifies. Names do not replace the anonymous cookie identity, are not unique or verified, and changing the name does not create another leaderboard slot. A previous best score retains the name used when it was earned until a better score replaces it. Existing scores use the Player label. No account or permanent profile is created.
 
 Before deploying this change, run `infra/schema.sql` in Azure Query Editor on quiet-marble-db (or run the migration as administrator). This adds one nullable `display_name` column without changing existing results. Then deploy. Verify a nickname survives refresh in the same tab, reset allows editing, and a qualifying score shows the chosen name.
+
+## Custom domain and AdSense
+
+Production: https://www.quietmarblegames.com (the root domain forwards here). Set
+`ALLOWED_ORIGIN=https://www.quietmarblegames.com` in the Azure app settings.
+
+The publisher script is in `index.html`; `public/ads.txt` authorizes publisher
+`pub-7714642237091483`. Public disclosures are at `/privacy.html` and `/contact.html`.
+The public support email is maintained only in `public/contact.html`; replace it
+before cancelling the mailbox, test receipt and replies, and redeploy.
+
+Before requesting AdSense review:
+- Deploy and check the homepage script, `/privacy.html`, `/contact.html`, and
+  `/ads.txt`. Confirm `https://quietmarblegames.com/ads.txt` redirects to the actual
+  text file at the www host, not to the homepage.
+- Check both leaderboard APIs return JSON successfully and ranked play works.
+- In AdSense Sites, verify `quietmarblegames.com` and request review.
+- Keep Auto ads off during setup. Configure and publish Google's certified CMP
+  under Privacy & messaging for applicable regions before enabling advertising.
+  The script alone is not a consent implementation.
+- After approval, configure a manual responsive unit below the rules, away from
+  game controls. No ad slot or manual ad request is added by this change.
+
+If APIs return 503, check Azure SQL availability/firewall and the existing
+`SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SESSION_SECRET` and
+`ALLOWED_ORIGIN` app settings. Do not expose their values in issues or logs.

@@ -10,3 +10,5 @@
 .score-list{max-height:420px;overflow-y:auto}
 
 .session-name{display:grid;gap:7px;margin:0 0 18px}.session-name label{font-size:12px}.session-name input{font:inherit;color:var(--ink);background:#fffefa;border:1px solid var(--line);border-radius:7px;padding:10px;width:100%;max-width:320px}.session-name small{font-size:10px;line-height:1.5;color:var(--muted)}.session-name input:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+footer>div{display:flex;align-items:center;flex-wrap:wrap;gap:16px}footer>div button{margin-left:0}
