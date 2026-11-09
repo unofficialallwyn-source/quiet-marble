@@ -1,7 +1,7 @@
 import {createHmac,randomUUID,timingSafeEqual} from 'node:crypto';
 import {initial,move,remaining,ended,type Game} from '../../shared/game.js';
 export class HttpError extends Error {constructor(public status:number,message:string){super(message)}}
-export interface Round{id:string;player:string;game:Game;started:number;finished:boolean}
+export interface Round{id:string;player:string;game:Game;started:number;finished:boolean;displayName?:string|null}
 export interface Result{left:number;moves:number;seconds:number}
 export interface Store{
  start(round:Round):Promise<void>;
@@ -36,9 +36,12 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
    let player=identity(req);
    if(body.action==='start'){
     if(body.game!=='marble'&&body.game!=='lights')return json({error:'Unknown game'},400);
+    if(body.name!=null&&typeof body.name!=='string')return json({error:'Enter a valid player name'},400);
+    const displayName=(body.name??'').trim().replace(/ +/g,' ');
+    if(displayName.length>24||(displayName&&!/^[\p{L}\p{M}\p{N} .'-]+$/u.test(displayName)))return json({error:'Use up to 24 characters: letters, numbers, spaces, dots, apostrophes or hyphens.'},400);
     player??=randomUUID();const id=randomUUID();
-    await store.start({id,player,game:body.game,started:now(),finished:false});
-    const response=json({id,name:player.slice(0,6)});
+    await store.start({id,player,game:body.game,started:now(),finished:false,displayName:displayName||null});
+    const response=json({id,name:displayName||`Player ${player.slice(0,6)}`});
     response.headers.set('Set-Cookie',`qm_player=${player}.${sign(player)}; HttpOnly; ${origin.startsWith('https:')?'Secure; ':''}SameSite=Lax; Path=/; Max-Age=31536000`);
     return response;
    }

@@ -14,3 +14,7 @@ BEGIN
  CREATE INDEX IX_rounds_player_started ON dbo.rounds(player,started DESC);
  CREATE INDEX IX_rounds_leaderboard ON dbo.rounds(game,finished,player,remaining_count,moves,seconds);
 END;
+
+-- Additive migration: existing scores keep their anonymous label.
+IF COL_LENGTH('dbo.rounds','display_name') IS NULL
+ ALTER TABLE dbo.rounds ADD display_name nvarchar(24) NULL;

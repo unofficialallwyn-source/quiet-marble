@@ -37,11 +37,11 @@ export class SqlStore implements Store{
  async start(r:Round){
   const result=await(await this.request()).input('id',sql.UniqueIdentifier,r.id)
    .input('player',sql.UniqueIdentifier,r.player).input('game',sql.VarChar(10),r.game)
-   .input('started',sql.BigInt,r.started).query(`${begin}${cleanup}
+   .input('displayName',sql.NVarChar(24),r.displayName??null).input('started',sql.BigInt,r.started).query(`${begin}${cleanup}
    IF EXISTS(SELECT 1 FROM dbo.rounds WHERE player=@player AND started>@started-1500)
    BEGIN COMMIT; SELECT 0 AS accepted; RETURN; END;
    DELETE FROM dbo.rounds WHERE player=@player AND game=@game AND finished=0;
-   INSERT dbo.rounds(id,player,game,started) VALUES(@id,@player,@game,@started);
+   INSERT dbo.rounds(id,player,game,started,display_name) VALUES(@id,@player,@game,@started,@displayName);
    COMMIT; SELECT 1 AS accepted;`);
   if(!result.recordset[0].accepted)throw new HttpError(429,'Please wait a moment before starting again');
  }
@@ -64,7 +64,7 @@ export class SqlStore implements Store{
  async leaderboard(game:Game){
   const result=await(await this.request()).input('game',sql.VarChar(10),game).query(`${begin}${cleanup}
    SELECT TOP(100) LOWER(CONVERT(varchar(36),player)) player,
-    LOWER(LEFT(CONVERT(varchar(36),player),6)) name,remaining_count [left],moves,seconds
+    COALESCE(display_name,'Player '+LOWER(LEFT(CONVERT(varchar(36),player),6))) name,remaining_count [left],moves,seconds
    FROM dbo.rounds WHERE game=@game AND finished=1
    ORDER BY remaining_count,moves,seconds,started,id;
    COMMIT;`);

@@ -36,9 +36,11 @@ test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',
   assert(await store.finish(worse.id,worse.player,{left:0,moves:500,seconds:10}));
   assert.equal(await store.get(worse.id,worse.player),null);
   assert.equal(await store.finish(worse.id,worse.player,{left:0,moves:1,seconds:1}),false);
-  const better=round(rows[105].player);await store.start(better);
+  const better={...round(rows[105].player),displayName:'Allwyn'};await store.start(better);
   assert(await store.finish(better.id,better.player,{left:0,moves:1,seconds:1}));
   assert.equal((await store.leaderboard('lights'))[0].seconds,1);
+  assert.equal((await store.leaderboard('lights'))[0].name,'Allwyn');
+  assert.match(marble[0].name,/^Player [a-f0-9]{6}$/);
   assert.equal(await store.get(rows[105].id,rows[105].player),null);
   assert.equal(await store.finish(better.id,better.player,{left:0,moves:1,seconds:1}),false);
   // Two qualifying players save simultaneously. The cap must remain exactly 100.
