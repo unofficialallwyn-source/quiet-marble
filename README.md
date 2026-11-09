@@ -87,3 +87,9 @@ Sound licenses and attribution are included under `public/sounds`.
 Run `npm --prefix api run db:migrate` as the database administrator before deploying this version. No new tables are needed. The migration grants the existing `qm_app` user DELETE on `dbo.rounds` for retention cleanup, even when APP_SQL_PASSWORD is omitted. The first leaderboard read/start/submission prunes old completed results to the top 100 per game; this intentionally removes nonqualifying history.
 
 SQL integration tests run in CI against an isolated SQL Server database and exercise actual retention queries, concurrent submissions, duplicate saves and expiry. They never connect to the production database. Azure connectivity and gameplay still require the live smoke checks above before code freeze.
+
+## Session player names
+
+Players can enter an optional nickname before starting (up to 24 characters). The browser remembers it in sessionStorage for the tab session; it is locked for the current round. The API validates and stores it with that round and displays it only if the score qualifies. Names do not replace the anonymous cookie identity, are not unique or verified, and changing the name does not create another leaderboard slot. A previous best score retains the name used when it was earned until a better score replaces it. Existing scores use the Player label. No account or permanent profile is created.
+
+Before deploying this change, run `infra/schema.sql` in Azure Query Editor on quiet-marble-db (or run the migration as administrator). This adds one nullable `display_name` column without changing existing results. Then deploy. Verify a nickname survives refresh in the same tab, reset allows editing, and a qualifying score shows the chosen name.
