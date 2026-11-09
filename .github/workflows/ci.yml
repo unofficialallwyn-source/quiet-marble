@@ -21,3 +21,27 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run check:api
+  sql-retention:
+    runs-on: ubuntu-latest
+    services:
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Qm_CI_Only_2026_Test!
+        ports:
+          - 1433:1433
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix api
+      - run: node --import tsx --test api/tests/retention.test.ts
+        env:
+          SQL_TEST_PASSWORD: Qm_CI_Only_2026_Test!
