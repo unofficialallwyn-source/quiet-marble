@@ -51,7 +51,7 @@ export class SqlStore implements Store{
      DECLARE @lock int, @accepted bit=1;
      EXEC @lock=sys.sp_getapplock @Resource='qm:activity',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;
      IF @lock<0 THROW 50002, 'Activity busy', 1;
-     DELETE FROM dbo.player_activity WHERE last_seen<=@activeCutoff;
+     DELETE FROM dbo.player_activity WHERE last_seen<=@roundCutoff;
      IF @player IS NOT NULL
      BEGIN
       IF @round IS NULL OR EXISTS(SELECT 1 FROM dbo.rounds WHERE id=@round AND player=@player AND finished=0 AND started>@roundCutoff)
@@ -60,6 +60,13 @@ export class SqlStore implements Store{
        UPDATE dbo.player_activity SET last_seen=@seen WHERE player=@player AND last_seen<@seen-30000;
        IF NOT EXISTS(SELECT 1 FROM dbo.player_activity WHERE player=@player)
         INSERT dbo.player_activity(player,last_seen) VALUES(@player,@seen);
+       -- Count a confirmed website visitor once for the lifetime of its 24-hour cookie.
+       -- Legacy game heartbeats update activity but are not additional visits.
+       IF @round IS NULL AND EXISTS(SELECT 1 FROM dbo.player_activity WHERE player=@player AND counted=0)
+       BEGIN
+        UPDATE dbo.site_totals SET visits=visits+1 WHERE singleton=1;
+        UPDATE dbo.player_activity SET counted=1 WHERE player=@player;
+       END;
       END
       ELSE SET @accepted=0;
      END;
@@ -73,6 +80,12 @@ export class SqlStore implements Store{
    `);
   if(!result.recordset[0].accepted)throw new HttpError(404,'Active round unavailable');
   return result.recordset[0].count;
+ }
+ async totalVisits():Promise<number>{
+  const result=await(await this.connect()).request().query('SELECT visits FROM dbo.site_totals WHERE singleton=1');
+  const visits=Number(result.recordset[0]?.visits);
+  if(!Number.isSafeInteger(visits)||visits<0)throw Error('Visit total unavailable');
+  return visits;
  }
  async start(r:Round){
   const result=await(await this.request()).input('id',sql.UniqueIdentifier,r.id)

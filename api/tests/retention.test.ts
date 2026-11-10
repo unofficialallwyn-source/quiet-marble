@@ -76,7 +76,7 @@ test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',
   await connection.request().input('player',sql.UniqueIdentifier,p1.player).input('old',sql.BigInt,Date.now()-ACTIVITY_TTL_MS-1)
    .query('UPDATE dbo.player_activity SET last_seen=@old WHERE player=@player');
   assert.equal(await store.activity(),1);
-  assert.equal((await connection.request().query('SELECT COUNT(*) n FROM dbo.player_activity')).recordset[0].n,1);
+  assert.equal((await connection.request().query('SELECT COUNT(*) n FROM dbo.player_activity')).recordset[0].n,2);
   // Current valid play can rejoin after expiry, without adding duplicate rows.
   assert.equal(await store.activity({player:p1.player,id:p1.id}),2);
   const counts=await connection.request().query('SELECT game,COUNT(*) n FROM dbo.rounds WHERE finished=1 GROUP BY game');
@@ -110,9 +110,25 @@ test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',
   await assert.rejects(store.activity({player:playing.player,id:playing.id}),/Active round unavailable/);
   // Visible website visitors need no game round; repeated tabs share one row.
   const visitor=randomUUID();const beforeVisitors=await store.activity();
+  assert.equal(await store.totalVisits(),0); // Game heartbeats never increment visits.
   assert.deepEqual(await Promise.all([1,2].map(()=>store.activity({player:visitor}))),[beforeVisitors+1,beforeVisitors+1]);
   await connection.request().input('player',sql.UniqueIdentifier,visitor).input('old',sql.BigInt,Date.now()-ACTIVITY_TTL_MS-1).query('UPDATE dbo.player_activity SET last_seen=@old WHERE player=@player');
   assert.equal(await store.activity(),beforeVisitors);
+  assert.equal(await store.totalVisits(),1);
+  await store.activity({player:visitor}); // Returning after five minutes is still the same visit.
+  assert.equal(await store.totalVisits(),1);
+  const secondVisitor=randomUUID();
+  await Promise.all(Array.from({length:8},()=>store.activity({player:secondVisitor})));
+  assert.equal(await store.totalVisits(),2);
+  await connection.request().query(`UPDATE dbo.player_activity SET last_seen=0`);
+  assert.equal(await store.activity(),0); // Expired activity rows disappear, total does not.
+  assert.equal(await store.totalVisits(),2);
+  const reconnected=new SqlStore(async()=>connection);
+  assert.equal(await reconnected.totalVisits(),2);
+  await connection.request().batch(await readFile(new URL('../../infra/schema.sql',import.meta.url),'utf8'));
+  assert.equal(await reconnected.totalVisits(),2); // Re-running migration preserves the total.
+  await reconnected.activity({player:randomUUID()});
+  assert.equal(await reconnected.totalVisits(),3);
   const notices=new SqlDeploymentStore(async()=>connection);
   assert.equal(await notices.get(),null);
   const notice={id:'123-1',startsAt:Date.now()+90000,expiresAt:Date.now()+1800000};

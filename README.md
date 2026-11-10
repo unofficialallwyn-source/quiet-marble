@@ -171,11 +171,11 @@ a matching same-origin request, and an owned unfinished round less than 24 hours
 old. Updates within 30 seconds do not write the timestamp again. Multiple tabs
 sharing the cookie count once. There are no names, IP addresses, or activity
 history in the presence table. Old rows stop counting after five minutes and are
-physically removed on the next activity read/heartbeat. When there is no traffic,
+physically removed after 24 hours of inactivity on the next activity read/heartbeat. When there is no traffic,
 expired rows can remain until then. This is an estimate of browser identities,
 not verified people; blocked cookies or multiple browsers affect accuracy.
 
-`GET /api/game?action=activity` returns `{count}`; authenticated
+`GET /api/game?action=activity` returns `{count,total}`; authenticated
 `POST /api/game` with `{action:"heartbeat",id:<round ID>}` refreshes activity and
 returns the count. Activity failures use the existing sanitized diagnostics.
 SQL CI covers duplicate tabs, concurrent updates, expiry, invalid ownership and
@@ -216,8 +216,9 @@ The game-page counter includes all visible visitors, not only active players. A
 separate signed `qm_visitor` cookie (one day) avoids changing leaderboard identity.
 The browser confirms cookie acceptance before a row is counted, then reports every
 minute while visible. Hidden/closed tabs age out after five minutes. The existing
-`player_activity` table stores only an identifier and last-seen time; no migration
-is required. This is an approximate browser count, not a lifetime user total.
+`player_activity` table stores the identifier, last-seen time and a deduplication flag.
+The cumulative visits feature below requires the schema update before deployment.
+The active count remains an approximate browser count, separate from total visits.
 
 ### Deployment notices for active rounds
 
@@ -258,3 +259,27 @@ explicit recovery option skips only the pre-upload warning. The post-upload clea
 still authenticates against the newly deployed API and must succeed. Leave this
 option unchecked for normal future deployments. Re-running an old failed run uses
 the old code and will not install the fix.
+
+
+### Cumulative total visits
+
+Before deploying this version, re-run `infra/schema.sql` against `quiet-marble-db`.
+It adds `player_activity.counted` and a single `site_totals` row initialized to zero.
+The migration is repeatable and never resets an existing total. No historical
+visits are backfilled. The runtime user receives SELECT/UPDATE on the new table.
+
+The page displays total visits separately from five-minute active visitors. One
+confirmed `qm_visitor` cookie counts once during its 24-hour lifetime; refreshes,
+extra tabs, polling and game changes do not add visits. After cookie expiry a new
+visit can count. This is not a unique-person metric and blocked cookies do not
+count. The increment and deduplication update share the activity transaction and
+lock, so retries/concurrent requests cannot count the same visitor twice. Legacy
+round heartbeats do not increment the total. Activity rows stop counting as active
+after five minutes but remain for deduplication until 24 hours of inactivity.
+Deleting them never decrements the singleton total. No permanent visitor list is
+kept. A deployment/restart does not reset the SQL total.
+
+`POST /api/game` with `{action:"visit"}` and the activity GET both include `total`.
+The UI retains the last known total through temporary failures and ignores a lower
+poll response. The SQL integration suite checks concurrent increments, expiry,
+new store instances and repeat migration. Deploy only after the schema update.

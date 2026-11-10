@@ -40,3 +40,28 @@ footer>div{display:flex;align-items:center;flex-wrap:wrap;gap:16px}footer>div bu
 .hint-notice{color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:15px;padding:26px;width:min(460px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto}.hint-notice::backdrop{background:#12271cb3}.hint-notice h2{font-size:29px}.hint-notice p{font-size:14px;line-height:1.7}.hint-notice button{padding:11px 20px;border:0;border-radius:7px;font:inherit}
 
 .hole.hinted,.sudoku-board input.hinted{outline:3px solid #c48722;outline-offset:-3px;background:#fff0bd}.sudoku-board input.hinted::placeholder{color:#72500f;opacity:1}
+
+.total-visits{text-align:center;color:var(--ink);margin:18px 0 4px;font-size:15px}.total-visits strong{font-size:24px;font-variant-numeric:tabular-nums}.total-visits small{display:block;font-size:11px;opacity:.7}
+
+.header-actions{display:flex;align-items:center;gap:18px}.theme-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;min-width:88px;padding:8px 12px;border:1px solid var(--line);border-radius:24px;background:transparent;font-size:12px;white-space:nowrap}.theme-toggle span{font-size:19px}
+@media(max-width:620px){header{height:auto;min-height:70px;flex-wrap:wrap;gap:8px;padding-top:12px;padding-bottom:12px}header nav{order:3;width:100%;justify-content:center}header nav a:first-child{display:inline}.header-actions{gap:0}.theme-toggle{min-width:80px}}
+/* Keep the physical game boards recognizable while adapting surrounding surfaces. */
+html[data-theme="dark"]{--bg:#14221e;--ink:#e4eee5;--muted:#afc0b1;--green:#42785f;--line:#40574b}
+[data-theme="dark"] .game-card,[data-theme="dark"] .score-card,[data-theme="dark"] .session-name input,[data-theme="dark"] .sudoku-setup select{background:#1d3028}
+[data-theme="dark"] .game-tab.chosen,[data-theme="dark"] .objective,[data-theme="dark"] .tips,[data-theme="dark"] .pill,[data-theme="dark"] .sudoku-confirm,[data-theme="dark"] .controls .sound-toggle{background:#2a4033;border-color:#57705c}
+[data-theme="dark"] .ad-space{background:#203329;border-color:var(--line);color:var(--muted)}
+[data-theme="dark"] .guest,[data-theme="dark"] .intro .eyebrow,[data-theme="dark"] .lede,[data-theme="dark"] .intro-note,[data-theme="dark"] .game-heading .eyebrow,[data-theme="dark"] .stats span,[data-theme="dark"] .board-caption,[data-theme="dark"] .status,[data-theme="dark"] .objective .eyebrow,[data-theme="dark"] .objective p:not(.eyebrow),[data-theme="dark"] .personal small,[data-theme="dark"] .score-tabs button,[data-theme="dark"] .score-caption,[data-theme="dark"] .empty,[data-theme="dark"] .empty strong,[data-theme="dark"] .ranking-note,[data-theme="dark"] .player-id,[data-theme="dark"] .score-list small,[data-theme="dark"] .rank,[data-theme="dark"] .guide-title .eyebrow,[data-theme="dark"] .steps p,[data-theme="dark"] .tips p,[data-theme="dark"] .about p,[data-theme="dark"] footer>span,[data-theme="dark"] footer button,[data-theme="dark"] .modal p,[data-theme="dark"] .controls .sound-toggle[aria-pressed="false"]{color:var(--muted)}
+[data-theme="dark"] em,[data-theme="dark"] .mini,[data-theme="dark"] .tiny-icon,[data-theme="dark"] .empty>span,[data-theme="dark"] .game-tab b,[data-theme="dark"] .steps article>span,[data-theme="dark"] .tips>span{color:#a4c69a}
+[data-theme="dark"] .score-tabs .current{color:var(--ink);border-color:#98c7a4}
+[data-theme="dark"] .stats,[data-theme="dark"] .stats>div,[data-theme="dark"] .score-tabs,[data-theme="dark"] .score-list li,[data-theme="dark"] .ranking-note,[data-theme="dark"] .controls button,[data-theme="dark"] .modal button,[data-theme="dark"] .empty button,[data-theme="dark"] .steps article>span{border-color:var(--line)}
+[data-theme="dark"] .divider{background:var(--line)}
+[data-theme="dark"] .finish-notice{background:#23392ff5;border-color:#638269;color:var(--ink)}
+[data-theme="dark"] .deployment-notice{background:#42391f;color:#fff0c2;border-color:#b39a54}
+[data-theme="dark"] .sudoku-board{border-color:#8eaf96}
+[data-theme="dark"] .sudoku-board input{background:#1d3028;color:#9ecaff;border-color:#4b6252}
+[data-theme="dark"] .sudoku-board .given{background:#314739;color:#e4eee5}
+[data-theme="dark"] .sudoku-board input:nth-child(3n),[data-theme="dark"] .sudoku-board input:nth-child(n+19):nth-child(-n+27),[data-theme="dark"] .sudoku-board input:nth-child(n+46):nth-child(-n+54){border-color:#8eaf96}
+[data-theme="dark"] .sudoku-board .conflict{background:#66372f;color:#ffe1d8}
+[data-theme="dark"] .sudoku-board input:focus,[data-theme="dark"] .sudoku-board input.hinted{background:#59491f;color:#fff2cc}
+[data-theme="dark"] .sudoku-board input.hinted::placeholder{color:#fff2cc}
+[data-theme="dark"] .player-activity>span{color:#98c7a4}
