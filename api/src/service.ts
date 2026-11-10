@@ -78,12 +78,15 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
     const session=await store.sudoku.get(body.id,player);
     if(!session||session.updated<=now()-86400000)return json({error:'This streak expired or was replaced. Start a new streak.'},404);
     if(body.action==='sudoku-resume')return json(view(session));
-    if(!['sudoku-begin','sudoku-solve','sudoku-next'].includes(body.action))return json({error:'Unknown Sudoku action'},400);
+    if(!['sudoku-begin','sudoku-solve','sudoku-next','sudoku-hint'].includes(body.action))return json({error:'Unknown Sudoku action'},400);
     // A repeated submission after a lost response returns the saved win, never adds one.
     if(body.action==='sudoku-solve'&&session.solved&&body.puzzleNumber===session.wins-1)return json(view(session));
     if(body.puzzleNumber!==session.wins)return json({error:'Puzzle changed. Resume the current streak.'},409);
     const next={...session,updated:now()};let save=false;
-    if(body.action==='sudoku-begin'){
+    if(body.action==='sudoku-hint'){
+     if(session.solved)return json({error:'Choose the next puzzle'},409);
+     next.practice=true;next.started=session.started||now();
+    }else if(body.action==='sudoku-begin'){
      if(session.solved)return json({error:'Choose the next puzzle'},409);
      if(session.started)return json(view(session));
      next.started=now();
@@ -93,7 +96,7 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
     }else{
      if(session.solved||!session.started)return json({error:'Start this puzzle first'},409);
      if(!validSolution(session.puzzle,body.answer))return json({error:'Not solved yet. Check every row, column and 3 × 3 box.'},400);
-     next.wins++;next.seconds+=Math.max(1,Math.floor((now()-session.started)/1000));next.solved=true;save=true;
+     next.wins++;next.seconds+=Math.max(1,Math.floor((now()-session.started)/1000));next.solved=true;save=!session.practice;
     }
     operation=save?'save-score':'start';
     if(!await store.sudoku.replace(session,next,save))return json({error:'Streak changed in another request. Resume it before continuing.'},409);

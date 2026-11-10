@@ -52,3 +52,16 @@ test('Sudoku signed sessions, progression, server timing, retries and concurrenc
  const id=s.id;now+=86400001;assert.equal((await post({action:'sudoku-resume',id})).status,404);
  const fresh=await(await post({action:'sudoku-start',level:2})).json();assert.equal(fresh.wins,0);assert.equal(fresh.level,2);assert.equal((await post({action:'sudoku-resume',id})).status,404);
 });
+
+test('Sudoku hint persists practice across resume and next puzzle without saving assisted wins',async()=>{
+ const sudoku=new MemorySudoku();let now=100000;const handler=createHandler({sudoku} as Store,{secret:'x'.repeat(40),origin,now:()=>now});
+ let cookie='';const post=(body:any)=>handler(new Request(origin+'/api/game',{method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify(body)}));
+ const response=await post({action:'sudoku-start',level:0});cookie=response.headers.get('set-cookie')!.split(';')[0];let s=await response.json();
+ const call=async(action:string,extra={})=>{const r=await post({action,id:s.id,puzzleNumber:s.wins,...extra});assert.equal(r.status,200);s=await r.json();return s};
+ await call('sudoku-begin');now+=1000;await call('sudoku-solve',{answer:solve(s.puzzle)});assert.equal(sudoku.scores.length,1);
+ await call('sudoku-next');await call('sudoku-hint');assert.equal(s.practice,true);assert.equal(s.started,now);
+ await call('sudoku-resume');assert.equal(s.practice,true);
+ now+=1000;await call('sudoku-solve',{answer:solve(s.puzzle),practice:false});assert.equal(s.wins,2);assert.equal(sudoku.scores.length,1);
+ await call('sudoku-next');assert.equal(s.practice,true);await call('sudoku-begin');now+=1000;await call('sudoku-solve',{answer:solve(s.puzzle)});assert.equal(sudoku.scores.length,1);
+ await call('sudoku-start',{level:0});assert(!s.practice);await call('sudoku-begin');now+=1000;await call('sudoku-solve',{answer:solve(s.puzzle)});assert.equal(sudoku.scores.length,2);
+});
