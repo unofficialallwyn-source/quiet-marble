@@ -283,3 +283,23 @@ kept. A deployment/restart does not reset the SQL total.
 The UI retains the last known total through temporary failures and ignores a lower
 poll response. The SQL integration suite checks concurrent increments, expiry,
 new store instances and repeat migration. Deploy only after the schema update.
+
+### Marble board variants
+
+The dropdown offers English (33 holes), Triangle (15 holes, top vacancy), and
+Mini Diamond (13 holes, centre vacancy). English permits orthogonal jumps;
+Triangle permits jumps along its three lattice axes; Mini Diamond also permits
+diagonal jumps. Every opening has a tested complete one-marble solution used by
+practice hints. Hints from arbitrary positions retain the bounded search behavior.
+Reset before changing a board during a round. Rules, counters, personal results
+and public top-100 rankings follow the selected board.
+
+Re-run `infra/schema.sql` before deployment. It replaces the rounds game CHECK
+constraint to permit `triangle` and `diamond`. Existing English results retain the
+`marble` key and remain intact. The existing retention SQL already partitions by
+game, so each new board has its own 100-player limit without new score tables.
+The server determines the board from the stored round, never the score request.
+
+`src/RecentlyAdded.tsx` holds the explicit release date for this feature. The
+Recently added badges and New dropdown labels expire after 30 days. For future
+features, use their own release date; do not extend old badges indefinitely.

@@ -129,6 +129,18 @@ test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',
   assert.equal(await reconnected.totalVisits(),2); // Re-running migration preserves the total.
   await reconnected.activity({player:randomUUID()});
   assert.equal(await reconnected.totalVisits(),3);
+  // New boards retain independent top-100 rankings, including the same player on both.
+  const variantRows=Array.from({length:210},(_,i)=>({id:randomUUID(),player:rows[i%105].player,game:i<105?'triangle':'diamond',started,finished:1,left:1,moves:i<105?13:11,seconds:i%105+1}));
+  await connection.request().input('rows',sql.NVarChar(sql.MAX),JSON.stringify(variantRows)).query(`
+   INSERT dbo.rounds(id,player,game,started,finished,remaining_count,moves,seconds)
+   SELECT id,player,game,started,finished,[left],moves,seconds FROM OPENJSON(@rows)
+   WITH(id uniqueidentifier,player uniqueidentifier,game varchar(10),started bigint,finished bit,[left] int,moves int,seconds int)`);
+  assert.equal((await store.leaderboard('triangle')).length,100);
+  assert.equal((await store.leaderboard('diamond')).length,100);
+  assert.equal((await store.leaderboard('marble')).length,100);
+  assert.equal((await store.leaderboard('lights')).length,100);
+  const variantCounts=await connection.request().query("SELECT game,COUNT(*) n FROM dbo.rounds WHERE finished=1 GROUP BY game");
+  assert.equal(variantCounts.recordset.length,4);assert(variantCounts.recordset.every(r=>r.n===100));
   const notices=new SqlDeploymentStore(async()=>connection);
   assert.equal(await notices.get(),null);
   const notice={id:'123-1',startsAt:Date.now()+90000,expiresAt:Date.now()+1800000};

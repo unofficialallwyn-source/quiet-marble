@@ -79,3 +79,13 @@ BEGIN
 END;
 IF DATABASE_PRINCIPAL_ID('qm_app') IS NOT NULL
  GRANT SELECT,UPDATE ON dbo.site_totals TO qm_app;
+
+-- Preserve existing English scores while allowing separate boards in game keys.
+-- Older installations have an automatically named inline game CHECK constraint.
+DECLARE @gameChecks nvarchar(max)=N'';
+SELECT @gameChecks=@gameChecks+N'ALTER TABLE dbo.rounds DROP CONSTRAINT '+QUOTENAME(name)+N';'
+FROM sys.check_constraints
+WHERE parent_object_id=OBJECT_ID('dbo.rounds') AND definition LIKE '%game%';
+IF LEN(@gameChecks)>0 EXEC sys.sp_executesql @gameChecks;
+ALTER TABLE dbo.rounds WITH CHECK ADD CONSTRAINT CK_rounds_game
+ CHECK(game IN('marble','lights','triangle','diamond'));

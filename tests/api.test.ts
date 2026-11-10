@@ -68,3 +68,17 @@ test('website visitors count only after signed-cookie confirmation without affec
  assert.equal((await handler(request({action:'visit'},visitorCookie,'https://evil.example'))).status,403);
  for(let i=0;i<3;i++)await handler(request({action:'visit'}));assert.equal(seen.size,1);
 });
+
+test('new marble boards replay on the stored variant and reject a mismatched board history',async()=>{
+ const {initial}=await import('../shared/game.ts');const {solveMarble}=await import('../shared/marble-solver.ts');
+ for(const game of ['triangle','diamond'] as const){
+  const {handler,store}=setup();const r=await handler(request({action:'start',game}));assert.equal(r.status,200);
+  const id=(await r.json()).id,cookie=r.headers.get('set-cookie')!.split(';')[0];assert.equal(store.rounds.get(id)!.game,game);
+  const wrong=solveMarble(initial('marble'));assert.equal(wrong.status,'solved');if(wrong.status!=='solved')throw Error();
+  assert.equal((await handler(request({id,game:'marble',moves:wrong.moves},cookie))).status,400);
+  const solution=solveMarble(initial(game),250000,game);assert.equal(solution.status,'solved');if(solution.status!=='solved')throw Error();
+  assert.equal((await handler(request({id,game:'lights',moves:solution.moves},cookie))).status,200);assert.equal(store.results.get(id)!.left,1);
+ }
+ const {handler}=setup();assert.equal((await handler(request({action:'start',game:'unsupported'}))).status,400);
+ assert.equal((await handler(new Request(origin+'/api/game?game=unsupported'))).status,400);
+});
