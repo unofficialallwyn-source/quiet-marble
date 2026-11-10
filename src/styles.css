@@ -12,3 +12,15 @@
 .session-name{display:grid;gap:7px;margin:0 0 18px}.session-name label{font-size:12px}.session-name input{font:inherit;color:var(--ink);background:#fffefa;border:1px solid var(--line);border-radius:7px;padding:10px;width:100%;max-width:320px}.session-name small{font-size:10px;line-height:1.5;color:var(--muted)}.session-name input:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 
 footer>div{display:flex;align-items:center;flex-wrap:wrap;gap:16px}footer>div button{margin-left:0}
+
+/* Finite end-of-round effects, confined to the board and never intercepting input. */
+.board-area{position:relative}
+.round-finish{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;border-radius:18px}
+.finish-notice{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:calc(100% - 28px);max-width:350px;padding:15px 18px;border:1px solid #d4ddcf;border-radius:14px;background:#fffff5f5;color:var(--ink);box-shadow:0 6px 24px #233d3624;text-align:center;animation:finish-arrive .55s ease-out both}
+.finish-notice strong{display:block;font-size:21px}.finish-notice>span:last-child{display:block;font-size:12px;line-height:1.5;margin-top:4px}.finish-symbol{display:block;font-size:30px;line-height:1.1;color:#b78837;margin-bottom:5px}
+.round-stopped .finish-symbol{animation:finish-settle .75s ease-in-out 2}
+.confetti{position:absolute;inset:0;overflow:hidden}.confetti i{position:absolute;top:-20px;width:8px;height:14px;opacity:0;animation:confetti-fall 2.8s ease-in var(--delay) both}.confetti i:nth-child(3n){border-radius:50%;width:9px;height:9px}
+@keyframes finish-arrive{from{opacity:0;transform:translate(-50%,15px) scale(.95)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@keyframes finish-settle{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+@keyframes confetti-fall{0%{opacity:0;transform:translate(0,-10px) rotate(0)}10%{opacity:1}80%{opacity:1}100%{opacity:0;transform:translate(var(--drift),560px) rotate(var(--spin))}}
+@media(prefers-reduced-motion:reduce){.finish-notice,.round-stopped .finish-symbol{animation:none}.confetti{display:none}}
