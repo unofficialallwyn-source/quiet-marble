@@ -1,2 +1,3 @@
 import {solveMarble} from '../shared/marble-solver';
-self.onmessage=(event:MessageEvent<number[]>)=>self.postMessage(solveMarble(event.data));
+import type {MarbleVariant} from '../shared/game';
+self.onmessage=(event:MessageEvent<{board:number[];game:MarbleVariant}>)=>self.postMessage(solveMarble(event.data.board,250000,event.data.game));

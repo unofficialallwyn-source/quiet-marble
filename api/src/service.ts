@@ -2,7 +2,7 @@ import {makePuzzle,validSolution,type SudokuSession} from '../../shared/sudoku.j
 import type {SudokuStore} from './sudoku-store.js';
 import {createHmac,randomUUID,timingSafeEqual} from 'node:crypto';
 import {unavailable,type FailureLog,type FailureOperation} from './diagnostics.js';
-import {initial,move,remaining,ended,type Game} from '../../shared/game.js';
+import {initial,move,remaining,ended,isGame,type Game} from '../../shared/game.js';
 export class HttpError extends Error {constructor(public status:number,message:string){super(message)}}
 export interface Round{id:string;player:string;game:Game;started:number;finished:boolean;displayName?:string|null}
 export interface Result{left:number;moves:number;seconds:number}
@@ -35,7 +35,8 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
     if(new URL(req.url).searchParams.get('action')==='activity'){
      operation='activity';return json({count:await store.activity(),total:await store.totalVisits()});
     }
-    const game=new URL(req.url).searchParams.get('game')==='lights'?'lights':'marble';
+    const game=new URL(req.url).searchParams.get('game')||'marble';
+    if(!isGame(game))return json({error:'Unknown game'},400);
     operation='leaderboard';
     return json({scores:await store.leaderboard(game)});
    }
@@ -109,7 +110,7 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
     operation='activity';return json({count:await store.activity({player,id:body.id})});
    }
    if(body.action==='start'){
-    if(body.game!=='marble'&&body.game!=='lights')return json({error:'Unknown game'},400);
+    if(!isGame(body.game))return json({error:'Unknown game'},400);
     if(body.name!=null&&typeof body.name!=='string')return json({error:'Enter a valid player name'},400);
     const displayName=(body.name??'').trim().replace(/ +/g,' ');
     if(displayName.length>24||(displayName&&!/^[\p{L}\p{M}\p{N} .'-]+$/u.test(displayName)))return json({error:'Use up to 24 characters: letters, numbers, spaces, dots, apostrophes or hyphens.'},400);
