@@ -107,6 +107,11 @@ test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',
   const playing=sr();await store.sudoku.start(playing);assert((await store.activity({player:playing.player,id:playing.id}))>0);
   await store.sudoku.replace(playing,{...playing,solved:true,wins:1,seconds:10},true);
   await assert.rejects(store.activity({player:playing.player,id:playing.id}),/Active round unavailable/);
+  // Visible website visitors need no game round; repeated tabs share one row.
+  const visitor=randomUUID();const beforeVisitors=await store.activity();
+  assert.deepEqual(await Promise.all([1,2].map(()=>store.activity({player:visitor}))),[beforeVisitors+1,beforeVisitors+1]);
+  await connection.request().input('player',sql.UniqueIdentifier,visitor).input('old',sql.BigInt,Date.now()-ACTIVITY_TTL_MS-1).query('UPDATE dbo.player_activity SET last_seen=@old WHERE player=@player');
+  assert.equal(await store.activity(),beforeVisitors);
  }finally{
   await connection.close();
   await admin.request().batch(`ALTER DATABASE [${database}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [${database}]`);

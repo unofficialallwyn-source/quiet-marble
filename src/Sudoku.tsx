@@ -1,14 +1,11 @@
 import {useEffect,useRef,useState} from 'react';
 import {difficulties,type SudokuView} from '../shared/sudoku';
-import {usePlayerActivity} from './use-player-activity';
 import {RoundFinish} from './round-finish';
 type Score={player:string;name:string;wins:number;seconds:number;startLevel:number};
 const time=(s:number)=>`${Math.floor(s/3600)?Math.floor(s/3600)+':':''}${Math.floor(s/60)%60<10?'0':''}${Math.floor(s/60)%60}:${String(s%60).padStart(2,'0')}`;
 const storageKey='qm-sudoku';
 export default function Sudoku({playerName,changeName}:{playerName:string;changeName:(name:string)=>void}){
  const [session,setSession]=useState<SudokuView|null>(null),[values,setValues]=useState<number[]>([]),[level,setLevel]=useState(0),[busy,setBusy]=useState(false),[message,setMessage]=useState('Choose your starting difficulty. Each win unlocks the next level.'),[scores,setScores]=useState<Score[]>([]),[error,setError]=useState(false),[clock,setClock]=useState(Date.now()),[confirm,setConfirm]=useState(false);
- const [entries,setEntries]=useState(0);
- usePlayerActivity(session?.id||'',!!session?.started&&!session.solved,entries);
  const locked=useRef(false),mounted=useRef(true);
  async function loadScores(){try{const r=await fetch('/api/game?game=sudoku');if(!r.ok)throw Error();const d=await r.json();if(mounted.current){setScores(d.scores);setError(false)}}catch{if(mounted.current)setError(true)}}
  async function request(action:string,extra:Record<string,unknown>={}){
@@ -49,7 +46,7 @@ export default function Sudoku({playerName,changeName}:{playerName:string;change
    catch(e:any){if(mounted.current)setMessage(e.message);return}
    finally{locked.current=false;if(mounted.current)setBusy(false)}
   }
-  setValues(v=>v.map((x,k)=>k===i?n:x));setEntries(n=>n+1);
+  setValues(v=>v.map((x,k)=>k===i?n:x));
  }
  function conflict(i:number){const n=values[i];return !!n&&values.some((v,j)=>j!==i&&v===n&&(Math.floor(i/9)===Math.floor(j/9)||i%9===j%9||(Math.floor(i/27)===Math.floor(j/27)&&Math.floor(i%9/3)===Math.floor(j%9/3))))}
  const elapsed=session&&!session.solved&&session.started?Math.max(0,Math.floor((clock-session.started)/1000)):0;

@@ -209,3 +209,12 @@ existing `qm_app` user CRUD permissions. No changes to existing scores, app sett
 Azure resources or packages are required. Then run the Azure deployment workflow on
 `main`. Do not deploy the new API before this migration: activity queries also use
 the new session table.
+
+### Website visitor counter
+
+The game-page counter includes all visible visitors, not only active players. A
+separate signed `qm_visitor` cookie (one day) avoids changing leaderboard identity.
+The browser confirms cookie acceptance before a row is counted, then reports every
+minute while visible. Hidden/closed tabs age out after five minutes. The existing
+`player_activity` table stores only an identifier and last-seen time; no migration
+is required. This is an approximate browser count, not a lifetime user total.
