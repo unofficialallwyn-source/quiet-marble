@@ -1,3 +1,5 @@
+import {ShareResult} from './ShareResult';
+import {shareGame,shareSudoku} from './share-result';
 import {HintNotice,useHintNotice} from './HintNotice';
 import {sudokuHint} from '../shared/sudoku-hint';
 import {DeploymentNotice} from './DeploymentNotice';
@@ -77,6 +79,7 @@ export default function Sudoku({playerName,changeName}:{playerName:string;change
    <p className="board-caption">Bold numbers are fixed. Enter 1–9; delete to clear a cell.</p>
    <div className="controls">{session.solved?<button className="primary" disabled={busy||confirm} onClick={()=>run('sudoku-next')}>Next puzzle · {difficulties[Math.min(3,session.startLevel+session.wins)]}</button>:<button className="primary" disabled={busy||confirm||values.some(n=>!n)} onClick={()=>run('sudoku-solve')}>{session.practice?'Check practice win':'Check & save win'}</button>}<button disabled={busy||session.solved||confirm} onClick={hint}>✧ Hint</button>{hintCell&&<button disabled={busy||confirm} onClick={()=>enter(hintCell.index,hintCell.value)}>Use hint: {hintCell.value}</button>}<button disabled={busy} onClick={()=>{setConfirm(!confirm);setLevel(session.startLevel)}}>{confirm?'Keep playing':'New streak / difficulty'}</button><button disabled={busy} onClick={()=>run('sudoku-resume')}>Resume saved streak</button></div>
   </>}
+  <ShareResult key={`${session?.id}-${session?.wins}-${session?.solved}`} content={session?.solved?shareSudoku(session):shareGame('sudoku')} result={!!session?.solved}/>
   {confirm&&<div className="sudoku-confirm"><p>A new streak resets consecutive wins and the current puzzle. Your best saved score stays on the leaderboard. Choose a difficulty above.</p><button className="primary" disabled={busy} onClick={()=>run('sudoku-start')}>Start new streak</button></div>}
   <p className="status" role="status">{busy?'Please wait…':message}</p>
  </section><aside><section className="objective"><p className="eyebrow">THE OBJECTIVE</p><h3>Nine numbers.<br/><em>No repeats.</em></h3><p>Fill each row, column and 3 × 3 box with the numbers 1–9, exactly once.</p><p>Win to advance: Easy → Medium → Hard → Expert. Expert wins continue with fresh Expert puzzles.</p></section>
