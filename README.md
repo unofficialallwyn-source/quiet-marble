@@ -119,3 +119,35 @@ Before requesting AdSense review:
 If APIs return 503, check Azure SQL availability/firewall and the existing
 `SQL_SERVER`, `SQL_DATABASE`, `SQL_USER`, `SQL_PASSWORD`, `SESSION_SECRET` and
 `ALLOWED_ORIGIN` app settings. Do not expose their values in issues or logs.
+
+### Investigating intermittent API 503s
+
+Unexpected failures now return a random `requestId` (also `X-Request-ID`) and log
+`game_api_failure` through the invocation's Azure logger. Logs contain only the
+operation, elapsed application time, allowlisted driver error type/code, and SQL
+error number when available. They omit error messages/stacks, SQL, credentials,
+cookies, nicknames and request payloads. No automatic retry or database-setting
+change is made: a failed score write must not be replayed blindly.
+
+In Static Web Apps > Application Insights, check whether monitoring is enabled.
+Enable it if needed to collect server logs (Azure monitoring has separate usage
+pricing). No browser analytics SDK is required. After deploying, reproduce a
+failure and use Application Insights > Logs:
+
+```kusto
+traces
+| where timestamp > ago(24h)
+| where message contains "game_api_failure"
+| project timestamp, message, operation_Id
+| order by timestamp desc
+```
+
+Match `requestId` to the failed response. `ETIMEOUT` identifies a timeout but does
+not by itself identify its cause; `sqlNumber=40613` means database unavailable
+(and can occur during serverless resume). Authentication/firewall/query errors
+need their corresponding SQL number checked. Inspect SQL Activity log and
+Compute + storage settings before blaming auto-pause: an Online snapshot does
+not establish its prior state. Response timing measured externally also includes
+network overhead and is not a measurement of SQL execution time.
+
+This is a diagnostic change, not a confirmed fix for the intermittent outage.
