@@ -65,3 +65,17 @@ BEGIN
 END;
 IF DATABASE_PRINCIPAL_ID('qm_app') IS NOT NULL
  GRANT SELECT,UPDATE ON dbo.deployment_notice TO qm_app;
+
+-- Lifetime visits are never reduced by activity cleanup or repeat migrations.
+IF COL_LENGTH('dbo.player_activity','counted') IS NULL
+ ALTER TABLE dbo.player_activity ADD counted bit NOT NULL CONSTRAINT DF_activity_counted DEFAULT 0;
+IF OBJECT_ID('dbo.site_totals','U') IS NULL
+BEGIN
+ CREATE TABLE dbo.site_totals(
+  singleton int NOT NULL PRIMARY KEY CHECK(singleton=1),
+  visits bigint NOT NULL CHECK(visits>=0)
+ );
+ INSERT dbo.site_totals(singleton,visits) VALUES(1,0);
+END;
+IF DATABASE_PRINCIPAL_ID('qm_app') IS NOT NULL
+ GRANT SELECT,UPDATE ON dbo.site_totals TO qm_app;

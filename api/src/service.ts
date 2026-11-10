@@ -12,6 +12,7 @@ export interface Store{
  get(id:string,player:string):Promise<Round|null>;
  finish(id:string,player:string,result:Result):Promise<boolean>;
  leaderboard(game:Game):Promise<unknown[]>;
+ totalVisits():Promise<number>;
  activity(heartbeat?:{player:string;id?:string}):Promise<number>;
 }
 export function createHandler(store:Store,config:{secret:string;origin:string;now?:()=>number}){
@@ -32,7 +33,7 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
      operation='leaderboard';if(!store.sudoku)throw Error('Sudoku unavailable');return json({scores:await store.sudoku.leaderboard()});
     }
     if(new URL(req.url).searchParams.get('action')==='activity'){
-     operation='activity';return json({count:await store.activity()});
+     operation='activity';return json({count:await store.activity(),total:await store.totalVisits()});
     }
     const game=new URL(req.url).searchParams.get('game')==='lights'?'lights':'marble';
     operation='leaderboard';
@@ -51,8 +52,8 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
     const visitor=identity(req,'qm_visitor');
     // Count only after the browser returns its signed cookie; blocked cookies must
     // not create a new visitor row every minute. Keep this separate from game identity.
-    if(visitor)return json({count:await store.activity({player:visitor}),registered:true});
-    const id=randomUUID();const response=json({count:await store.activity(),registered:false});
+    if(visitor)return json({count:await store.activity({player:visitor}),total:await store.totalVisits(),registered:true});
+    const id=randomUUID();const response=json({count:await store.activity(),total:await store.totalVisits(),registered:false});
     response.headers.set('Set-Cookie',`qm_visitor=${id}.${sign(id)}; HttpOnly; ${origin.startsWith('https:')?'Secure; ':''}SameSite=Lax; Path=/; Max-Age=86400`);
     return response;
    }

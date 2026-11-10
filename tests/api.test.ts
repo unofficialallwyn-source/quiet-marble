@@ -6,6 +6,7 @@ class MemoryStore implements Store{
  async start(r:Round){if([...this.rounds.values()].some(x=>x.player===r.player&&r.started-x.started<1500))throw new HttpError(429,'Too fast');this.rounds.set(r.id,r)}
  async get(id:string,p:string){let r=this.rounds.get(id);return r?.player===p?r:null}
  async finish(id:string,p:string,result:Result){const r=await this.get(id,p);if(!r||r.finished)return false;r.finished=true;this.results.set(id,result);return true}
+ async totalVisits(){return 12}
  async activity(_heartbeat?:{player:string;id?:string}){return 0}
  async leaderboard(){return [...this.results.values()]}
 }
@@ -36,7 +37,7 @@ test('activity reads are anonymous; heartbeats require same-origin signed identi
  const calls:unknown[]=[];
  store.activity=async(heartbeat?:{player:string;id?:string})=>{calls.push(heartbeat);return 7};
  const read=await handler(new Request(origin+'/api/game?action=activity'));
- assert.deepEqual(await read.json(),{count:7});assert.equal(read.headers.get('set-cookie'),null);
+ assert.deepEqual(await read.json(),{count:7,total:12});assert.equal(read.headers.get('set-cookie'),null);
  assert.equal(calls.length,1);assert.equal(calls[0],undefined);
  const {id,cookie}=await start(handler);
  for(const [body,c,source,status] of [
@@ -58,9 +59,9 @@ test('website visitors count only after signed-cookie confirmation without affec
  const {handler,store}=setup();const seen=new Set<string>();let writes=0;
  store.activity=async(beat?:{player:string;id?:string})=>{if(beat){seen.add(beat.player);writes++}return seen.size};
  const first=await handler(request({action:'visit'}));
- assert.deepEqual(await first.json(),{count:0,registered:false});assert.equal(writes,0);
+ assert.deepEqual(await first.json(),{count:0,total:12,registered:false});assert.equal(writes,0);
  const visitorCookie=first.headers.get('set-cookie')!.split(';')[0];assert(visitorCookie.startsWith('qm_visitor='));
- for(let i=0;i<2;i++)assert.deepEqual(await(await handler(request({action:'visit'},visitorCookie))).json(),{count:1,registered:true});
+ for(let i=0;i<2;i++)assert.deepEqual(await(await handler(request({action:'visit'},visitorCookie))).json(),{count:1,total:12,registered:true});
  const {cookie:gameCookie}=await start(handler);
  const same=await handler(request({action:'visit'},gameCookie+'; '+visitorCookie));assert.equal(same.headers.get('set-cookie'),null);assert.equal((await same.json()).count,1);
  const forged=await handler(request({action:'visit'},visitorCookie+'0'));assert.equal((await forged.json()).registered,false);assert.equal(seen.size,1);

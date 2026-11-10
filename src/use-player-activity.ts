@@ -2,6 +2,7 @@ import {useEffect,useState} from 'react';
 
 // One site-level poller counts visible visitors, whether or not a game has started.
 export function useVisitorActivity(){
+ const [total,setTotal]=useState<number|null>(null);
  const [count,setCount]=useState<number|null>(null);
  useEffect(()=>{
   let stopped=false,inFlight=false,cookiesBlocked=false;
@@ -24,7 +25,10 @@ export function useVisitorActivity(){
      if(data.registered===false)cookiesBlocked=true;
     }
     if(!Number.isSafeInteger(data.count)||data.count<0)throw Error('Invalid count');
-    if(!stopped)setCount(data.count);
+    if(!stopped){
+     setCount(data.count);
+     if(Number.isSafeInteger(data.total)&&data.total>=0)setTotal(previous=>Math.max(previous??0,data.total));
+    }
    }catch{if(!stopped)setCount(null)}
    finally{clearTimeout(timeout);inFlight=false}
   };
@@ -34,5 +38,5 @@ export function useVisitorActivity(){
   document.addEventListener('visibilitychange',visible);
   return()=>{stopped=true;clearInterval(timer);controller?.abort();document.removeEventListener('visibilitychange',visible)};
  },[]);
- return count;
+ return {count,total};
 }
