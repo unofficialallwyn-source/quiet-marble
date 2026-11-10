@@ -303,3 +303,18 @@ The server determines the board from the stored round, never the score request.
 `src/RecentlyAdded.tsx` holds the explicit release date for this feature. The
 Recently added badges and New dropdown labels expire after 30 days. For future
 features, use their own release date; do not extend old badges indefinitely.
+
+### Sharing games and results
+
+Share game opens a panel with WhatsApp, the browser/device share sheet when
+supported, and Copy text & link. If clipboard access is unavailable, the message
+is selected for manual copying. The user always chooses a recipient and sends it.
+Completed rounds share the selected board, remaining marbles or Lights Out move
+count, time, and practice/unassisted status. Completed Sudoku puzzles share streak
+wins, total solving time and difficulty. No nickname, player ID or session ID is
+included, and sharing does not submit a leaderboard score.
+
+Links use `https://www.quietmarblegames.com/?game=<key>#games`; supported keys are
+marble, triangle, diamond, lights and sudoku. Unknown values default to English.
+Opening a link selects the game but does not auto-start a round or import a score.
+No database migration, account integration or new environment variables needed.
