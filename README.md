@@ -151,3 +151,32 @@ not establish its prior state. Response timing measured externally also includes
 network overhead and is not a measurement of SQL execution time.
 
 This is a diagnostic change, not a confirmed fix for the intermittent outage.
+
+## Recent player counter
+
+The counter estimates anonymous browsers active across both games in the last
+five minutes, including the current player. It never uses a fabricated default.
+Zero shows "Be the first to play"; errors show "Activity unavailable".
+
+Before deploying this change, run the updated `infra/schema.sql` as the database
+administrator (or use `npm --prefix api run db:migrate` with admin credentials).
+This adds `dbo.player_activity(player, last_seen)` and grants `qm_app` its CRUD
+permissions. Existing rounds and leaderboard results are preserved. No app
+setting is added. A missing migration affects the counter, not game startup.
+
+The browser polls once per minute while visible. Only a visible, unfinished
+round with a start/move/undo in the last minute sends a heartbeat. A passive open
+tab does not keep a player counted. Heartbeats require the signed player cookie,
+a matching same-origin request, and an owned unfinished round less than 24 hours
+old. Updates within 30 seconds do not write the timestamp again. Multiple tabs
+sharing the cookie count once. There are no names, IP addresses, or activity
+history in the presence table. Old rows stop counting after five minutes and are
+physically removed on the next activity read/heartbeat. When there is no traffic,
+expired rows can remain until then. This is an estimate of browser identities,
+not verified people; blocked cookies or multiple browsers affect accuracy.
+
+`GET /api/game?action=activity` returns `{count}`; authenticated
+`POST /api/game` with `{action:"heartbeat",id:<round ID>}` refreshes activity and
+returns the count. Activity failures use the existing sanitized diagnostics.
+SQL CI covers duplicate tabs, concurrent updates, expiry, invalid ownership and
+finished/expired rounds; API tests cover identity, origin and failure handling.

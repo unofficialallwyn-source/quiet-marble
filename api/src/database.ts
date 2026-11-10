@@ -30,10 +30,47 @@ const cleanup = `
    ORDER BY remaining_count,moves,seconds,started,id) AS place
   FROM dbo.rounds WHERE finished=1
  ) DELETE FROM leaders WHERE place>100;`;
+export const ACTIVITY_TTL_MS=5*60*1000;
 export const ROUND_TTL_MS=24*60*60*1000;
 export class SqlStore implements Store{
  constructor(private connect:()=>Promise<sql.ConnectionPool>=pool){}
  async request(){return (await this.connect()).request().input('cutoff',sql.BigInt,Date.now()-ROUND_TTL_MS)}
+ // A separate short transaction keeps activity polling independent of score cleanup.
+ async activity(heartbeat?:{player:string;id:string}):Promise<number>{
+  const now=Date.now();
+  const result=await(await this.connect()).request()
+   .input('player',sql.UniqueIdentifier,heartbeat?.player??null)
+   .input('round',sql.UniqueIdentifier,heartbeat?.id??null)
+   .input('seen',sql.BigInt,now).input('activeCutoff',sql.BigInt,now-ACTIVITY_TTL_MS)
+   .input('roundCutoff',sql.BigInt,now-ROUND_TTL_MS).query(`
+    SET XACT_ABORT ON;
+    BEGIN TRY
+     BEGIN TRANSACTION;
+     DECLARE @lock int, @accepted bit=1;
+     EXEC @lock=sys.sp_getapplock @Resource='qm:activity',@LockMode='Exclusive',@LockOwner='Transaction',@LockTimeout=5000;
+     IF @lock<0 THROW 50002, 'Activity busy', 1;
+     DELETE FROM dbo.player_activity WHERE last_seen<=@activeCutoff;
+     IF @player IS NOT NULL
+     BEGIN
+      IF EXISTS(SELECT 1 FROM dbo.rounds WHERE id=@round AND player=@player AND finished=0 AND started>@roundCutoff)
+      BEGIN
+       UPDATE dbo.player_activity SET last_seen=@seen WHERE player=@player AND last_seen<@seen-30000;
+       IF NOT EXISTS(SELECT 1 FROM dbo.player_activity WHERE player=@player)
+        INSERT dbo.player_activity(player,last_seen) VALUES(@player,@seen);
+      END
+      ELSE SET @accepted=0;
+     END;
+     SELECT COUNT(*) AS count, @accepted AS accepted FROM dbo.player_activity WHERE last_seen>@activeCutoff;
+     COMMIT;
+    END TRY
+    BEGIN CATCH
+     IF XACT_STATE()<>0 ROLLBACK;
+     THROW;
+    END CATCH;
+   `);
+  if(!result.recordset[0].accepted)throw new HttpError(404,'Active round unavailable');
+  return result.recordset[0].count;
+ }
  async start(r:Round){
   const result=await(await this.request()).input('id',sql.UniqueIdentifier,r.id)
    .input('player',sql.UniqueIdentifier,r.player).input('game',sql.VarChar(10),r.game)

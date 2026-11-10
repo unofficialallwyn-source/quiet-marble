@@ -9,6 +9,7 @@ export interface Store{
  get(id:string,player:string):Promise<Round|null>;
  finish(id:string,player:string,result:Result):Promise<boolean>;
  leaderboard(game:Game):Promise<unknown[]>;
+ activity(heartbeat?:{player:string;id:string}):Promise<number>;
 }
 export function createHandler(store:Store,config:{secret:string;origin:string;now?:()=>number}){
  if(config.secret.length<32)throw Error('SESSION_SECRET must contain at least 32 characters');
@@ -24,6 +25,9 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
   const started=Date.now();let operation:FailureOperation='request';
   try{
    if(req.method==='GET'){
+    if(new URL(req.url).searchParams.get('action')==='activity'){
+     operation='activity';return json({count:await store.activity()});
+    }
     const game=new URL(req.url).searchParams.get('game')==='lights'?'lights':'marble';
     operation='leaderboard';
     return json({scores:await store.leaderboard(game)});
@@ -37,6 +41,11 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
    let body:any;try{body=JSON.parse(raw)}catch{return json({error:'Invalid JSON'},400)}
    if(!body||typeof body!=='object')return json({error:'Invalid request'},400);
    let player=identity(req);
+   if(body.action==='heartbeat'){
+    if(!player)return json({error:'Start a game before reporting activity'},401);
+    if(typeof body.id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(body.id))return json({error:'Invalid round'},400);
+    operation='activity';return json({count:await store.activity({player,id:body.id})});
+   }
    if(body.action==='start'){
     if(body.game!=='marble'&&body.game!=='lights')return json({error:'Unknown game'},400);
     if(body.name!=null&&typeof body.name!=='string')return json({error:'Enter a valid player name'},400);
