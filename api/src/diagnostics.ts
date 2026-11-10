@@ -1,5 +1,5 @@
 import {randomUUID} from 'node:crypto';
-export type FailureOperation='configuration'|'request'|'leaderboard'|'start'|'get-round'|'save-score';
+export type FailureOperation='configuration'|'request'|'leaderboard'|'start'|'get-round'|'save-score'|'activity';
 export type FailureLog=(entry:Record<string,unknown>)=>void;
 const codes=new Set(['ETIMEOUT','ESOCKET','ECONNCLOSED','ENOTOPEN','ELOGIN','EINSTLOOKUP','EREQUEST','ECANCEL','EABORT','ENOCONN']);
 const names=new Set(['ConnectionError','RequestError','TransactionError','TypeError','Error']);

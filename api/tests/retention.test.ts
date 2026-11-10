@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import sql from 'mssql';
-import {SqlStore,ROUND_TTL_MS} from '../src/database.ts';
+import {SqlStore,ROUND_TTL_MS,ACTIVITY_TTL_MS} from '../src/database.ts';
 
 test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',async()=>{
  // This test is deliberately restricted to the isolated local CI SQL container.
@@ -59,6 +59,24 @@ test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',
   const replacement=round(first.player);replacement.started=Date.now();await store.start(replacement);
   assert.equal(await store.get(first.id,first.player),null);
   assert(await store.get(replacement.id,replacement.player));
+  // Presence does not count spectators; simultaneous tabs/rounds deduplicate by player.
+  assert.equal(await store.activity(),0);
+  const p1=round();p1.started=Date.now()-4000;await store.start(p1);
+  const p1other={...round(p1.player,'marble'),started:p1.started+2000};await store.start(p1other);
+  const p2=round();await store.start(p2);
+  assert.deepEqual(await Promise.all([store.activity({player:p1.player,id:p1.id}),store.activity({player:p1.player,id:p1other.id})]),[1,1]);
+  assert.equal(await store.activity({player:p2.player,id:p2.id}),2);
+  await assert.rejects(store.activity({player:p2.player,id:p1.id}),/Active round unavailable/);
+  const doneRound=round();await store.start(doneRound);
+  await store.finish(doneRound.id,doneRound.player,{left:0,moves:1,seconds:1});
+  await assert.rejects(store.activity({player:doneRound.player,id:doneRound.id}),/Active round unavailable/);
+  await assert.rejects(store.activity({player:old.player,id:old.id}),/Active round unavailable/);
+  await connection.request().input('player',sql.UniqueIdentifier,p1.player).input('old',sql.BigInt,Date.now()-ACTIVITY_TTL_MS-1)
+   .query('UPDATE dbo.player_activity SET last_seen=@old WHERE player=@player');
+  assert.equal(await store.activity(),1);
+  assert.equal((await connection.request().query('SELECT COUNT(*) n FROM dbo.player_activity')).recordset[0].n,1);
+  // Current valid play can rejoin after expiry, without adding duplicate rows.
+  assert.equal(await store.activity({player:p1.player,id:p1.id}),2);
   const counts=await connection.request().query('SELECT game,COUNT(*) n FROM dbo.rounds WHERE finished=1 GROUP BY game');
   assert(counts.recordset.every(r=>r.n===100));
  }finally{

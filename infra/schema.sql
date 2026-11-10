@@ -18,3 +18,14 @@ END;
 -- Additive migration: existing scores keep their anonymous label.
 IF COL_LENGTH('dbo.rounds','display_name') IS NULL
  ALTER TABLE dbo.rounds ADD display_name nvarchar(24) NULL;
+
+-- Short-lived anonymous activity only; never store names or a player history.
+IF OBJECT_ID('dbo.player_activity','U') IS NULL
+BEGIN
+ CREATE TABLE dbo.player_activity(
+  player uniqueidentifier NOT NULL PRIMARY KEY,
+  last_seen bigint NOT NULL
+ );
+END;
+IF DATABASE_PRINCIPAL_ID('qm_app') IS NOT NULL
+ GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.player_activity TO qm_app;

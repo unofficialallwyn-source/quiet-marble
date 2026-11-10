@@ -6,6 +6,7 @@ class MemoryStore implements Store{
  async start(r:Round){if([...this.rounds.values()].some(x=>x.player===r.player&&r.started-x.started<1500))throw new HttpError(429,'Too fast');this.rounds.set(r.id,r)}
  async get(id:string,p:string){let r=this.rounds.get(id);return r?.player===p?r:null}
  async finish(id:string,p:string,result:Result){const r=await this.get(id,p);if(!r||r.finished)return false;r.finished=true;this.results.set(id,result);return true}
+ async activity(_heartbeat?:{player:string;id:string}){return 0}
  async leaderboard(){return [...this.results.values()]}
 }
 const origin='https://game.example';
@@ -28,4 +29,27 @@ test('session nickname is normalized, optional, validated and bound to the round
  const cookie=response.headers.get('set-cookie')!.split(';')[0];
  assert.equal((await handler(request({id:body.id,name:'Different name',moves:[0,3,6,9,12,17,21].map(i=>[i])},cookie))).status,200);
  assert.equal(store.rounds.get(body.id)?.displayName,'Allwyn Joseph');
+});
+
+test('activity reads are anonymous; heartbeats require same-origin signed identity and a valid round ID',async()=>{
+ const {store,handler}=setup();
+ const calls:unknown[]=[];
+ store.activity=async(heartbeat?:{player:string;id:string})=>{calls.push(heartbeat);return 7};
+ const read=await handler(new Request(origin+'/api/game?action=activity'));
+ assert.deepEqual(await read.json(),{count:7});assert.equal(read.headers.get('set-cookie'),null);
+ assert.equal(calls.length,1);assert.equal(calls[0],undefined);
+ const {id,cookie}=await start(handler);
+ for(const [body,c,source,status] of [
+  [{action:'heartbeat',id},'',origin,401],
+  [{action:'heartbeat',id},cookie+'0',origin,401],
+  [{action:'heartbeat',id},cookie,'https://evil.example',403],
+  [{action:'heartbeat',id:'not-a-uuid'},cookie,origin,400],
+ ] as const)assert.equal((await handler(request(body,c,source))).status,status);
+ assert.equal(calls.length,1);
+ const beat=await handler(request({action:'heartbeat',id},cookie));
+ assert.deepEqual(await beat.json(),{count:7});
+ assert.deepEqual(calls[1],{id,player:store.rounds.get(id)!.player});
+ store.activity=async()=>{throw Error('private database error')};
+ const failure=await handler(new Request(origin+'/api/game?action=activity'));
+ assert.equal(failure.status,503);assert(!('count' in await failure.json()));
 });

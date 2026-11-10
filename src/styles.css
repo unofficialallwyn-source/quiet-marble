@@ -24,3 +24,5 @@ footer>div{display:flex;align-items:center;flex-wrap:wrap;gap:16px}footer>div bu
 @keyframes finish-settle{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
 @keyframes confetti-fall{0%{opacity:0;transform:translate(0,-10px) rotate(0)}10%{opacity:1}80%{opacity:1}100%{opacity:0;transform:translate(var(--drift),560px) rotate(var(--spin))}}
 @media(prefers-reduced-motion:reduce){.finish-notice,.round-stopped .finish-symbol{animation:none}.confetti{display:none}}
+
+.player-activity{font-size:13px;color:var(--muted);margin:0 0 18px;line-height:1.5}.player-activity>span{color:var(--green);font-size:9px;margin-right:6px}
