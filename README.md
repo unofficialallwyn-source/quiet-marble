@@ -244,3 +244,17 @@ If the GitHub secret is absent, deployment still proceeds but notices are disabl
 If configured notification publishing fails (other than bootstrap 404), upload is
 stopped so a deployment does not silently bypass a broken warning configuration.
 An expired notice disappears even if a cancelled workflow cannot clean it up.
+
+### Recovering the deployment-notice header update
+
+Static Web Apps can overwrite the standard Authorization header on requests to
+managed Functions (Azure/static-web-apps issue #158). The notice helper and API use
+`X-QM-Deployment-Token` instead, keeping the existing constant-time secret check.
+Existing Azure/GitHub `DEPLOYMENT_NOTICE_TOKEN` values and SQL schema are unchanged.
+
+To install this fix when the old endpoint rejects requests: after merging, start a
+**new** Deploy Azure beta run on main and check **skip_deployment_notice** once. This
+explicit recovery option skips only the pre-upload warning. The post-upload cleanup
+still authenticates against the newly deployed API and must succeed. Leave this
+option unchecked for normal future deployments. Re-running an old failed run uses
+the old code and will not install the fix.
