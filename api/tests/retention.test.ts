@@ -1,3 +1,4 @@
+import {SqlDeploymentStore} from '../src/deployment-store.ts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
@@ -112,6 +113,12 @@ test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',
   assert.deepEqual(await Promise.all([1,2].map(()=>store.activity({player:visitor}))),[beforeVisitors+1,beforeVisitors+1]);
   await connection.request().input('player',sql.UniqueIdentifier,visitor).input('old',sql.BigInt,Date.now()-ACTIVITY_TTL_MS-1).query('UPDATE dbo.player_activity SET last_seen=@old WHERE player=@player');
   assert.equal(await store.activity(),beforeVisitors);
+  const notices=new SqlDeploymentStore(async()=>connection);
+  assert.equal(await notices.get(),null);
+  const notice={id:'123-1',startsAt:Date.now()+90000,expiresAt:Date.now()+1800000};
+  await notices.begin(notice);assert.deepEqual(await notices.get(),notice);
+  await notices.begin({...notice,id:'124-1'});await notices.end('123-1');assert.equal((await notices.get())?.id,'124-1');
+  await notices.end('124-1');assert.equal(await notices.get(),null);
  }finally{
   await connection.close();
   await admin.request().batch(`ALTER DATABASE [${database}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [${database}]`);

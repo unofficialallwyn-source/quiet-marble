@@ -1,3 +1,5 @@
+import {deploymentHandler} from './deployment.js';
+import {SqlDeploymentStore} from './deployment-store.js';
 import {app} from '@azure/functions';
 import {createHandler} from './service.js';
 import {unavailable} from './diagnostics.js';
@@ -14,4 +16,11 @@ app.http('game',{methods:['GET','POST'],authLevel:'anonymous',route:'game',handl
   const response=unavailable(error,'configuration',started,entry=>context.error(JSON.stringify(entry)),'Game service is not configured yet');
   return {status:response.status,headers:Object.fromEntries(response.headers.entries()),body:await response.text()};
  }
+}});
+
+// Separate endpoint: deployment status never changes game or leaderboard state.
+app.http('deployment',{methods:['GET','POST'],authLevel:'anonymous',route:'deployment',handler:async request=>{
+ const native=new Request(request.url,{method:request.method,headers:Object.fromEntries(request.headers.entries()),...(request.method==='POST'?{body:await request.text()}:{})});
+ const response=await deploymentHandler(new SqlDeploymentStore(),process.env.DEPLOYMENT_NOTICE_TOKEN??'')(native);
+ return {status:response.status,headers:Object.fromEntries(response.headers.entries()),body:await response.text()};
 }});

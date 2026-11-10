@@ -1,3 +1,4 @@
+import {DeploymentNotice} from './DeploymentNotice';
 import {useEffect,useRef,useState} from 'react';
 import {difficulties,type SudokuView} from '../shared/sudoku';
 import {RoundFinish} from './round-finish';
@@ -50,7 +51,7 @@ export default function Sudoku({playerName,changeName}:{playerName:string;change
  }
  function conflict(i:number){const n=values[i];return !!n&&values.some((v,j)=>j!==i&&v===n&&(Math.floor(i/9)===Math.floor(j/9)||i%9===j%9||(Math.floor(i/27)===Math.floor(j/27)&&Math.floor(i%9/3)===Math.floor(j%9/3))))}
  const elapsed=session&&!session.solved&&session.started?Math.max(0,Math.floor((clock-session.started)/1000)):0;
- return <><div className="play-layout sudoku-layout"><section className="game-card">
+ return <>{session&&!session.solved&&<DeploymentNotice/>}<div className="play-layout sudoku-layout"><section className="game-card">
   <div className="game-heading"><div><span className="eyebrow">NINE NUMBERS. ONE CLEAR MIND.</span><h2>Sudoku</h2></div><span className="pill">{session?difficulties[session.level]:'Choose your challenge'}</span></div>
   <div className="session-name"><label htmlFor="sudoku-name">Your name (optional)</label><input id="sudoku-name" value={playerName} disabled={busy||!!session&&!confirm} maxLength={24} onChange={e=>changeName(e.target.value)} placeholder="Choose a nickname"/><small>Your nickname is public if your streak reaches the top 100.</small></div>
   <div className="sudoku-setup"><label htmlFor="sudoku-level">Starting difficulty</label><select id="sudoku-level" disabled={busy||!!session&&!confirm} value={level} onChange={e=>setLevel(Number(e.target.value))}>{difficulties.map((d,i)=><option key={d} value={i}>{d}</option>)}</select></div>

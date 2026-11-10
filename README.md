@@ -218,3 +218,29 @@ The browser confirms cookie acceptance before a row is counted, then reports eve
 minute while visible. Hidden/closed tabs age out after five minutes. The existing
 `player_activity` table stores only an identifier and last-seen time; no migration
 is required. This is an approximate browser count, not a lifetime user total.
+
+### Deployment notices for active rounds
+
+Active players see a dismissible notice when the production workflow publishes an
+update warning. The workflow waits 90 seconds before uploading to Azure, then clears
+the notice on completion/failure. Clients poll every 15 seconds while visible and
+never refresh the page automatically. This describes a website update, not a promise
+of a server restart or guaranteed interruption. Notices expire after 30 minutes if
+cleanup cannot run. Cleanup only clears its own workflow run/attempt.
+
+One-time setup before deploying this feature:
+
+1. Run the updated `infra/schema.sql` as database admin. It creates the single-row
+   `deployment_notice` table and grants the existing `qm_app` user SELECT/UPDATE.
+2. Generate a random secret of at least 32 characters (for example, locally with
+   `openssl rand -hex 32`). Do not commit it or share it in chat.
+3. Add the same value as `DEPLOYMENT_NOTICE_TOKEN` in both Azure Static Web App
+   production environment variables and GitHub's **production environment secrets**.
+4. Deploy the feature through the manual workflow. The first deployment may see a
+   404 because the old API has no notice endpoint; it proceeds without a warning.
+   Warnings work for later deployments, in browsers that have loaded this version.
+
+If the GitHub secret is absent, deployment still proceeds but notices are disabled.
+If configured notification publishing fails (other than bootstrap 404), upload is
+stopped so a deployment does not silently bypass a broken warning configuration.
+An expired notice disappears even if a cancelled workflow cannot clean it up.

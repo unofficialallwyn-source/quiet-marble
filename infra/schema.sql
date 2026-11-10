@@ -51,3 +51,17 @@ BEGIN
  GRANT SELECT,INSERT,UPDATE,DELETE ON dbo.sudoku_sessions TO qm_app;
  GRANT SELECT,INSERT,UPDATE,DELETE ON dbo.sudoku_scores TO qm_app;
 END;
+
+-- One expiring deployment notice shared by all API instances.
+IF OBJECT_ID('dbo.deployment_notice','U') IS NULL
+BEGIN
+ CREATE TABLE dbo.deployment_notice(
+  singleton int NOT NULL PRIMARY KEY CHECK(singleton=1),
+  run_id varchar(32) NULL,
+  starts_at bigint NULL,
+  expires_at bigint NULL
+ );
+ INSERT dbo.deployment_notice(singleton) VALUES(1);
+END;
+IF DATABASE_PRINCIPAL_ID('qm_app') IS NOT NULL
+ GRANT SELECT,UPDATE ON dbo.deployment_notice TO qm_app;

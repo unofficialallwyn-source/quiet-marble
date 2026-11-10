@@ -29,6 +29,10 @@ jobs:
         env:
           SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
         run: test -n "$SWA_TOKEN" || { echo 'Add the Azure deployment token to the production environment secrets.'; exit 1; }
+      - name: Notify active players and wait
+        env:
+          DEPLOYMENT_NOTICE_TOKEN: ${{ secrets.DEPLOYMENT_NOTICE_TOKEN }}
+        run: node scripts/deployment-notice.mjs begin
       - uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
@@ -38,3 +42,8 @@ jobs:
           api_location: api
           skip_app_build: true
           skip_api_build: true
+      - name: Clear deployment notice
+        if: always()
+        env:
+          DEPLOYMENT_NOTICE_TOKEN: ${{ secrets.DEPLOYMENT_NOTICE_TOKEN }}
+        run: node scripts/deployment-notice.mjs end
