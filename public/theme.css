@@ -1,0 +1,5 @@
+/* Shared with the static privacy and contact pages. */
+html[data-theme="dark"]{color-scheme:dark;--bg:#14221e;--ink:#e4eee5;--muted:#afc0b1;--green:#42785f;--line:#40574b}
+html[data-theme="dark"] body{background:#14221e;color:#e4eee5}
+html[data-theme="dark"] body>main a{color:#acd9b6}
+html[data-theme="dark"] body>main footer{border-color:#40574b}
