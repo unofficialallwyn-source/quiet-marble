@@ -1,5 +1,5 @@
 export const difficulties=['Easy','Medium','Hard','Expert'] as const;
-export type SudokuSession={id:string;player:string;name:string;startLevel:number;level:number;wins:number;seconds:number;puzzle:number[];started:number;solved:boolean;updated:number};
+export type SudokuSession={practice?:boolean;id:string;player:string;name:string;startLevel:number;level:number;wins:number;seconds:number;puzzle:number[];started:number;solved:boolean;updated:number};
 export type SudokuView=Omit<SudokuSession,'player'|'updated'>;
 export function validSolution(puzzle:number[],answer:unknown):answer is number[]{
  if(!Array.isArray(answer)||answer.length!==81||!answer.every(n=>Number.isInteger(n)&&n>=1&&n<=9))return false;
