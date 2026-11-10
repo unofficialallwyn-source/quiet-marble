@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import sql from 'mssql';
+import type {SudokuSession} from '../../shared/sudoku.ts';
 import {SqlStore,ROUND_TTL_MS,ACTIVITY_TTL_MS} from '../src/database.ts';
 
 test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',async()=>{
@@ -79,6 +80,33 @@ test('SQL retention, ranking, concurrent saves, duplicate rejection and expiry',
   assert.equal(await store.activity({player:p1.player,id:p1.id}),2);
   const counts=await connection.request().query('SELECT game,COUNT(*) n FROM dbo.rounds WHERE finished=1 GROUP BY game');
   assert(counts.recordset.every(r=>r.n===100));
+
+  // Sudoku migration is repeatable and scores remain capped across concurrent wins.
+  await connection.request().batch(await readFile(new URL('../../infra/schema.sql',import.meta.url),'utf8'));
+  const sr=(player=randomUUID()):SudokuSession=>({id:randomUUID(),player,name:'Sudoku player',startLevel:0,level:0,wins:0,seconds:0,puzzle:Array(81).fill(0),started:Date.now()-5000,solved:false,updated:Date.now()-2000});
+  const one=sr();assert(await store.sudoku.start(one));assert.equal(await store.sudoku.get(one.id,randomUUID()),null);
+  const won={...one,wins:1,seconds:10,solved:true,updated:Date.now()};
+  assert.deepEqual((await Promise.all([1,2].map(()=>store.sudoku.replace(one,won,true)))).sort(),[false,true]);
+  assert.equal((await store.sudoku.leaderboard()).length,1);
+  const replacementSession=sr(one.player);replacementSession.updated=Date.now()+2000;
+  assert(await store.sudoku.start(replacementSession));assert.equal(await store.sudoku.get(one.id,one.player),null);
+  assert(await store.sudoku.replace(replacementSession,{...replacementSession,wins:1,seconds:50,solved:true},true));
+  assert.equal((await store.sudoku.leaderboard() as any[])[0].seconds,10);
+  const leaders=Array.from({length:105},(_,i)=>({player:randomUUID(),name:'Player',wins:i+2,seconds:100,start_level:0}));
+  await connection.request().input('rows',sql.NVarChar(sql.MAX),JSON.stringify(leaders)).query(`
+   INSERT dbo.sudoku_scores(player,name,wins,seconds,start_level)
+   SELECT player,name,wins,seconds,start_level FROM OPENJSON(@rows)
+   WITH(player uniqueidentifier,name nvarchar(24),wins int,seconds int,start_level int)`);
+  const contenders=[sr(),sr()];for(const x of contenders)assert(await store.sudoku.start(x));
+  assert.deepEqual(await Promise.all(contenders.map((x,i)=>store.sudoku.replace(x,{...x,wins:200,seconds:20+i,solved:true},true))),[true,true]);
+  const sudokuScores=await store.sudoku.leaderboard() as any[];
+  assert.equal(sudokuScores.length,100);assert.equal(new Set(sudokuScores.map(x=>x.player)).size,100);assert.equal(sudokuScores[0].wins,200);assert.equal(sudokuScores[0].seconds,20);
+  const expired=sr();expired.updated=Date.now()-ROUND_TTL_MS-1;await store.sudoku.start(expired);
+  assert.equal(await store.sudoku.get(expired.id,expired.player),null);await store.sudoku.leaderboard();
+  assert.equal((await connection.request().input('id',sql.UniqueIdentifier,expired.id).query('SELECT id FROM dbo.sudoku_sessions WHERE id=@id')).recordset.length,0);
+  const playing=sr();await store.sudoku.start(playing);assert((await store.activity({player:playing.player,id:playing.id}))>0);
+  await store.sudoku.replace(playing,{...playing,solved:true,wins:1,seconds:10},true);
+  await assert.rejects(store.activity({player:playing.player,id:playing.id}),/Active round unavailable/);
  }finally{
   await connection.close();
   await admin.request().batch(`ALTER DATABASE [${database}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [${database}]`);

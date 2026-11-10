@@ -1,3 +1,4 @@
+import {SqlSudokuStore} from './sudoku-store.js';
 import sql from 'mssql';
 import {HttpError,type Round,type Result,type Store} from './service.js';
 import type {Game} from '../../shared/game.js';
@@ -33,7 +34,8 @@ const cleanup = `
 export const ACTIVITY_TTL_MS=5*60*1000;
 export const ROUND_TTL_MS=24*60*60*1000;
 export class SqlStore implements Store{
- constructor(private connect:()=>Promise<sql.ConnectionPool>=pool){}
+ readonly sudoku:SqlSudokuStore;
+ constructor(private connect:()=>Promise<sql.ConnectionPool>=pool){this.sudoku=new SqlSudokuStore(connect)}
  async request(){return (await this.connect()).request().input('cutoff',sql.BigInt,Date.now()-ROUND_TTL_MS)}
  // A separate short transaction keeps activity polling independent of score cleanup.
  async activity(heartbeat?:{player:string;id:string}):Promise<number>{
@@ -53,6 +55,7 @@ export class SqlStore implements Store{
      IF @player IS NOT NULL
      BEGIN
       IF EXISTS(SELECT 1 FROM dbo.rounds WHERE id=@round AND player=@player AND finished=0 AND started>@roundCutoff)
+       OR EXISTS(SELECT 1 FROM dbo.sudoku_sessions WHERE id=@round AND player=@player AND updated>@roundCutoff AND JSON_VALUE(state,'$.solved')='false' AND TRY_CONVERT(bigint,JSON_VALUE(state,'$.started'))>0)
       BEGIN
        UPDATE dbo.player_activity SET last_seen=@seen WHERE player=@player AND last_seen<@seen-30000;
        IF NOT EXISTS(SELECT 1 FROM dbo.player_activity WHERE player=@player)

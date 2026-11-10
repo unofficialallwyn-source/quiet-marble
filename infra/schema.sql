@@ -29,3 +29,25 @@ BEGIN
 END;
 IF DATABASE_PRINCIPAL_ID('qm_app') IS NOT NULL
  GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.player_activity TO qm_app;
+
+-- Sudoku keeps one resumable streak per player and only the top 100 best scores.
+IF OBJECT_ID('dbo.sudoku_sessions','U') IS NULL
+ CREATE TABLE dbo.sudoku_sessions(
+  id uniqueidentifier NOT NULL PRIMARY KEY,
+  player uniqueidentifier NOT NULL UNIQUE,
+  state nvarchar(max) NOT NULL,
+  updated bigint NOT NULL
+ );
+IF OBJECT_ID('dbo.sudoku_scores','U') IS NULL
+ CREATE TABLE dbo.sudoku_scores(
+  player uniqueidentifier NOT NULL PRIMARY KEY,
+  name nvarchar(24) NOT NULL,
+  wins int NOT NULL,
+  seconds int NOT NULL,
+  start_level int NOT NULL
+ );
+IF DATABASE_PRINCIPAL_ID('qm_app') IS NOT NULL
+BEGIN
+ GRANT SELECT,INSERT,UPDATE,DELETE ON dbo.sudoku_sessions TO qm_app;
+ GRANT SELECT,INSERT,UPDATE,DELETE ON dbo.sudoku_scores TO qm_app;
+END;
