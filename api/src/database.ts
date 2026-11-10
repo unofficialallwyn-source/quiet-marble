@@ -38,7 +38,7 @@ export class SqlStore implements Store{
  constructor(private connect:()=>Promise<sql.ConnectionPool>=pool){this.sudoku=new SqlSudokuStore(connect)}
  async request(){return (await this.connect()).request().input('cutoff',sql.BigInt,Date.now()-ROUND_TTL_MS)}
  // A separate short transaction keeps activity polling independent of score cleanup.
- async activity(heartbeat?:{player:string;id:string}):Promise<number>{
+ async activity(heartbeat?:{player:string;id?:string}):Promise<number>{
   const now=Date.now();
   const result=await(await this.connect()).request()
    .input('player',sql.UniqueIdentifier,heartbeat?.player??null)
@@ -54,7 +54,7 @@ export class SqlStore implements Store{
      DELETE FROM dbo.player_activity WHERE last_seen<=@activeCutoff;
      IF @player IS NOT NULL
      BEGIN
-      IF EXISTS(SELECT 1 FROM dbo.rounds WHERE id=@round AND player=@player AND finished=0 AND started>@roundCutoff)
+      IF @round IS NULL OR EXISTS(SELECT 1 FROM dbo.rounds WHERE id=@round AND player=@player AND finished=0 AND started>@roundCutoff)
        OR EXISTS(SELECT 1 FROM dbo.sudoku_sessions WHERE id=@round AND player=@player AND updated>@roundCutoff AND JSON_VALUE(state,'$.solved')='false' AND TRY_CONVERT(bigint,JSON_VALUE(state,'$.started'))>0)
       BEGIN
        UPDATE dbo.player_activity SET last_seen=@seen WHERE player=@player AND last_seen<@seen-30000;

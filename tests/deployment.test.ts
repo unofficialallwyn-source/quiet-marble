@@ -1,0 +1,22 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {deploymentHandler,type DeploymentStatus} from '../api/src/deployment.ts';
+test('deployment notice authorization, grace period, expiry and matching-run cleanup',async()=>{
+ let state:DeploymentStatus|null=null,time=100000;const token='x'.repeat(40);
+ const handler=deploymentHandler({get:async()=>state,begin:async s=>{state=s},end:async id=>{if(state?.id===id)state=null}},token,()=>time);
+ const get=()=>handler(new Request('https://game.example/api/deployment'));
+ const post=(action:string,id='123-1',secret=token)=>handler(new Request('https://game.example/api/deployment',{method:'POST',headers:{authorization:'Bearer '+secret},body:JSON.stringify({action,id})}));
+ assert.equal((await post('begin','123-1','wrong')).status,401);assert.equal(state,null);
+ assert.equal((await post('begin','invalid')).status,400);assert.equal((await post('delete')).status,400);
+ assert.equal((await post('begin')).status,200);
+ const response=await get();assert.equal(response.headers.get('cache-control'),'no-store');
+ assert.deepEqual(await response.json(),{deployment:{id:'123-1',startsAt:190000,expiresAt:1900000}});
+ await post('begin','124-1');await post('end','123-1');assert.equal((await(await get()).json()).deployment.id,'124-1');
+ await post('end','124-1');assert.deepEqual(await(await get()).json(),{deployment:null});
+ await post('begin');time+=30*60000;assert.deepEqual(await(await get()).json(),{deployment:null});
+});
+test('deployment store failures remain unavailable without leaking details',async()=>{
+ const handler=deploymentHandler({get:async()=>{throw Error('private SQL information')},begin:async()=>{},end:async()=>{}},'');
+ const r=await handler(new Request('https://game.example/api/deployment'));assert.equal(r.status,503);assert(!JSON.stringify(await r.json()).includes('SQL'));
+ const p=await handler(new Request('https://game.example/api/deployment',{method:'POST',headers:{authorization:'Bearer '},body:'{}'}));assert.equal(p.status,401);
+});

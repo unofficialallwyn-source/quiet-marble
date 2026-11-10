@@ -12,14 +12,14 @@ export interface Store{
  get(id:string,player:string):Promise<Round|null>;
  finish(id:string,player:string,result:Result):Promise<boolean>;
  leaderboard(game:Game):Promise<unknown[]>;
- activity(heartbeat?:{player:string;id:string}):Promise<number>;
+ activity(heartbeat?:{player:string;id?:string}):Promise<number>;
 }
 export function createHandler(store:Store,config:{secret:string;origin:string;now?:()=>number}){
  if(config.secret.length<32)throw Error('SESSION_SECRET must contain at least 32 characters');
  const origin=new URL(config.origin).origin,now=config.now??Date.now;
  const sign=(id:string)=>createHmac('sha256',config.secret).update(id).digest('hex');
- function identity(req:Request){
-  const value=req.headers.get('cookie')?.match(/(?:^|;\s*)qm_player=([a-f0-9-]{36})\.([a-f0-9]{64})(?:;|$)/);
+ function identity(req:Request,cookieName='qm_player'){
+  const value=req.headers.get('cookie')?.match(new RegExp('(?:^|;\\s*)'+cookieName+'=([a-f0-9-]{36})\\.([a-f0-9]{64})(?:;|$)'));
   if(!value)return null;
   return timingSafeEqual(Buffer.from(sign(value[1]),'hex'),Buffer.from(value[2],'hex'))?value[1]:null;
  }
@@ -46,6 +46,16 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
    if(Buffer.byteLength(raw)>30000)return json({error:'Request too large'},413);
    let body:any;try{body=JSON.parse(raw)}catch{return json({error:'Invalid JSON'},400)}
    if(!body||typeof body!=='object')return json({error:'Invalid request'},400);
+   if(body.action==='visit'){
+    operation='activity';
+    const visitor=identity(req,'qm_visitor');
+    // Count only after the browser returns its signed cookie; blocked cookies must
+    // not create a new visitor row every minute. Keep this separate from game identity.
+    if(visitor)return json({count:await store.activity({player:visitor}),registered:true});
+    const id=randomUUID();const response=json({count:await store.activity(),registered:false});
+    response.headers.set('Set-Cookie',`qm_visitor=${id}.${sign(id)}; HttpOnly; ${origin.startsWith('https:')?'Secure; ':''}SameSite=Lax; Path=/; Max-Age=86400`);
+    return response;
+   }
    let player=identity(req);
    if(typeof body.action==='string'&&body.action.startsWith('sudoku-')){
     if(!store.sudoku)throw Error('Sudoku unavailable');
