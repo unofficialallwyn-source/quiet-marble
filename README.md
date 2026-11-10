@@ -180,3 +180,32 @@ not verified people; blocked cookies or multiple browsers affect accuracy.
 returns the count. Activity failures use the existing sanitized diagnostics.
 SQL CI covers duplicate tabs, concurrent updates, expiry, invalid ownership and
 finished/expired rounds; API tests cover identity, origin and failure handling.
+
+### Sudoku streaks
+
+Sudoku has a separate top-100 leaderboard: one best streak per anonymous player,
+ordered by consecutive wins descending, then total server-measured solving seconds
+ascending. Starting difficulty is displayed alongside the score; all levels share
+one leaderboard. The dropdown selects the starting level. Wins progress through
+Easy, Medium, Hard and Expert, then continue with new Expert puzzles. Levels target
+44, 38, 32 and 28 clues, preserving a unique solution; these are clue-based challenge
+levels, not a formal human-technique difficulty rating.
+
+Each correct submission is checked against the original givens and Sudoku rules on
+the server and saves the streak automatically. The timer begins on the first entry,
+includes breaks during an unfinished puzzle, and stops on accepted submission.
+Waiting between puzzles is excluded. Incorrect answers can be corrected without
+losing the streak. New streak/difficulty replaces current progress, preserving any
+qualifying best score. Refresh resumes the current tab's entries. One live Sudoku
+streak is supported per anonymous browser identity; starting in another tab replaces
+it. Inactive streaks expire after 24 hours; cleanup runs on Sudoku writes/leaderboard
+reads. As with the existing games, anonymous play cannot prove human play.
+
+**Deploying the Sudoku update:** before deploying the new code, run the updated
+`infra/schema.sql` in the `quiet-marble-db` SQL query editor using the database admin,
+or run the existing migration script with admin credentials. It is additive and
+repeatable: it creates `dbo.sudoku_sessions` and `dbo.sudoku_scores` and grants the
+existing `qm_app` user CRUD permissions. No changes to existing scores, app settings,
+Azure resources or packages are required. Then run the Azure deployment workflow on
+`main`. Do not deploy the new API before this migration: activity queries also use
+the new session table.

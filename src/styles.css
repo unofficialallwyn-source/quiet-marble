@@ -26,3 +26,12 @@ footer>div{display:flex;align-items:center;flex-wrap:wrap;gap:16px}footer>div bu
 @media(prefers-reduced-motion:reduce){.finish-notice,.round-stopped .finish-symbol{animation:none}.confetti{display:none}}
 
 .player-activity{font-size:13px;color:var(--muted);margin:0 0 18px;line-height:1.5}.player-activity>span{color:var(--green);font-size:9px;margin-right:6px}
+
+/* Sudoku shares the existing game card and responsive controls. */
+.sudoku-setup{display:flex;align-items:center;gap:14px;margin:16px 0}.sudoku-setup select{font:inherit;padding:9px;border:1px solid var(--line);border-radius:7px;background:white;color:var(--ink)}
+.sudoku-area{min-height:0;padding:25px 0 12px}.sudoku-board{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));width:min(100%,420px);border:2px solid var(--green)}
+.sudoku-board input{width:100%;min-width:0;aspect-ratio:1;padding:0;text-align:center;font:20px 'DM Sans',sans-serif;border:0;border-right:1px solid #ccd6cb;border-bottom:1px solid #ccd6cb;border-radius:0;background:#fffefa;color:#3267a3;caret-color:transparent}
+.sudoku-board input:nth-child(3n){border-right:2px solid var(--green)}.sudoku-board input:nth-child(9n){border-right:0}.sudoku-board input:nth-child(n+19):nth-child(-n+27),.sudoku-board input:nth-child(n+46):nth-child(-n+54){border-bottom:2px solid var(--green)}.sudoku-board input:nth-child(n+73){border-bottom:0}
+.sudoku-board .given{font-weight:700;color:var(--ink);background:#edf1e7}.sudoku-board .conflict{background:#ffe5df;color:#9b3025}.sudoku-board input:focus{position:relative;outline:3px solid #ba8b3b;outline-offset:-3px;background:#fff4d6}
+.sudoku-intro{text-align:center;padding:55px 12px}.sudoku-intro button,.sudoku-confirm button{border:0;border-radius:7px;padding:12px 20px;font:inherit}.sudoku-confirm{margin-top:18px;padding:16px;background:#f1f4eb;border-radius:8px;line-height:1.6}.sudoku-guide>p{line-height:1.8;color:var(--muted);margin-top:24px}.sudoku-layout .stats strong{font-size:22px}
+@media(max-width:620px){.game-tabs{flex-wrap:wrap}.game-tab{flex-basis:calc(50% - 8px)}.sudoku-board input{font-size:19px}.sudoku-layout .stats strong{font-size:19px}}
