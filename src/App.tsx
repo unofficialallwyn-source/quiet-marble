@@ -1,3 +1,4 @@
+import {GameNotice} from './GameNotice';
 import {RecentlyAdded,isRecent,VARIANTS_RELEASE} from './RecentlyAdded';
 import {ThemeToggle} from './ThemeToggle';
 import {solveLights} from '../shared/lights-solver';
@@ -15,6 +16,8 @@ type RecordRow={game:Game,left:number,moves:number,date:string};
 export default function Home(){
 const sound=useGameSounds();
 const hintNotice=useHintNotice();
+const [finishDismissed,setFinishDismissed]=useState(false);
+const [hintProblem,setHintProblem]=useState('');
 const [hintTarget,setHintTarget]=useState(-1);
 const [marbleVariant,setMarbleVariant]=useState<MarbleVariant>('marble');
 const [sudoku,setSudoku]=useState(false);
@@ -40,7 +43,7 @@ async function start(g:Game=game,firstMove?:number[]){
     const r=await fetch('/api/game',{signal:AbortSignal.timeout(12000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start',game:g,name:playerName})});
     const d:any=await r.json();
     if(!r.ok)throw Error(d.error);
-    setGame(g);setBoard(firstBoard);setHistory(firstMove?[firstMove]:[]);setSelected(-1);setHintTarget(-1);
+    setGame(g);setBoard(firstBoard);setHistory(firstMove?[firstMove]:[]);setSelected(-1);setHintTarget(-1);setFinishDismissed(false);
     setRound(d.id);setName(d.name);setActive(true);setPractice(false);setSaved(false);
     setSeconds(0);setStarted(Date.now());
     if(firstMove)sound.play(g!=='lights'?'marble':firstBoard[firstMove[0]]===1?'switch-on':'switch-off');
@@ -54,7 +57,7 @@ function reset(){
   if(starting.current||busy)return;
   setBoard(initial(game));
   setHistory([]);
-  setSelected(-1);setHintTarget(-1);
+  setSelected(-1);setHintTarget(-1);setFinishDismissed(false);
   setActive(false);
   setPractice(false);
   setRound('');
@@ -63,30 +66,31 @@ function reset(){
   setStarted(0);
   setMessage('Puzzle reset. Make your first move to start, or select Start game. Saved scores are unchanged.');
 }
-function choose(g:Game){if(starting.current||busy)return;setSudoku(false);if(g!=='lights')setMarbleVariant(g);if(g===game)return;setRound('');setStarted(0);setGame(g);setBoard(initial(g));setActive(false);setHistory([]);setSelected(-1);setHintTarget(-1);setSeconds(0);setSaved(false);setPractice(false);setMessage('Make your first move to start, or select Start game.');}
-async function tap(i:number){if(starting.current||done||busy)return;if(game!=='lights'&&board[i]===1){setSelected(i===selected?-1:i);setHintTarget(-1);return;}try{let m=game!=='lights'?[selected,i]:[i];let b=move(board,game,m);if(!active){await start(game,m);return;}sound.play(game!=='lights'?'marble':b[i]===1?'switch-on':'switch-off');setBoard(b);setHistory([...history,m]);setSelected(-1);setHintTarget(-1);setMessage(ended(b,game)?'Round complete. Save your result using the game controls.':game!=='lights'?'Nice jump. Keep thinking a few moves ahead.':'Every switch changes the shape of the puzzle.');}catch{setMessage('Choose a highlighted hole two spaces away.');}}
-function undo(){if(!history.length||saved)return;let h=history.slice(0,-1),b=initial(game);for(let m of h)b=move(b,game,m);setBoard(b);setHistory(h);setSelected(-1);setHintTarget(-1);setPractice(true);setMessage('Move undone. This is now a practice round.');}
+function choose(g:Game){if(starting.current||busy)return;setSudoku(false);if(g!=='lights')setMarbleVariant(g);if(g===game)return;setRound('');setStarted(0);setGame(g);setBoard(initial(g));setActive(false);setHistory([]);setSelected(-1);setHintTarget(-1);setFinishDismissed(false);setSeconds(0);setSaved(false);setPractice(false);setMessage('Make your first move to start, or select Start game.');}
+async function tap(i:number){if(starting.current||done||busy)return;if(game!=='lights'&&board[i]===1){setSelected(i===selected?-1:i);setHintTarget(-1);return;}try{let m=game!=='lights'?[selected,i]:[i];let b=move(board,game,m);if(!active){await start(game,m);return;}sound.play(game!=='lights'?'marble':b[i]===1?'switch-on':'switch-off');setBoard(b);setHistory([...history,m]);setSelected(-1);setHintTarget(-1);setFinishDismissed(false);setMessage(ended(b,game)?'Round complete. Save your result using the game controls.':game!=='lights'?'Nice jump. Keep thinking a few moves ahead.':'Every switch changes the shape of the puzzle.');}catch{setMessage('Choose a highlighted hole two spaces away.');}}
+function undo(){if(!history.length||saved)return;let h=history.slice(0,-1),b=initial(game);for(let m of h)b=move(b,game,m);setBoard(b);setHistory(h);setSelected(-1);setHintTarget(-1);setFinishDismissed(false);setPractice(true);setMessage('Move undone. This is now a practice round.');}
 async function hint(){
  if(!active||done||busy||starting.current)return;
- setPractice(true);hintNotice.explain();
+ setPractice(true);setHintProblem('');
  if(game!=='lights'){
   starting.current=true;setBusy(true);setMessage('Finding a winning route…');
   try{
    const solution=await marbleHint(board,game);
-   if(solution.status!=='solved'||!solution.moves.length){setSelected(-1);setHintTarget(-1);setMessage(solution.status==='unsolvable'?'This position cannot finish with one marble. Undo a move or reset to follow a winning route.':'No winning route found within the hint search limit. Undo a move or reset for guided play.');return;}
+   if(solution.status!=='solved'||!solution.moves.length){setSelected(-1);setHintTarget(-1);const explanation=solution.status==='unsolvable'?'This position cannot finish with one marble, even though legal jumps may remain. Undo a move or reset to follow a winning route.':'No winning route found within the hint search limit. Undo a move or reset for guided play.';setMessage(explanation);setHintProblem(explanation);return;}
+   hintNotice.explain();
    const [from,to]=solution.moves[0];setSelected(from);setHintTarget(to);
    setMessage(`Hint: move the selected marble to row ${Math.floor(to/7)+1}, column ${to%7+1}. Practice round — excluded from the leaderboard.`);
-  }catch{setMessage('Hint unavailable. Please retry.')}finally{starting.current=false;setBusy(false)}
+  }catch{setMessage('Hint unavailable. Please retry.');setHintProblem('The hint could not be loaded. Please retry. Your board has not changed.')}finally{starting.current=false;setBusy(false)}
   return;
  }
  const solution=solveLights(board);
  if(!solution?.length){setSelected(-1);setMessage('No hint is available for this board. Reset to try again.');return;}
- const tile=solution[0];setSelected(tile);
+ hintNotice.explain();const tile=solution[0];setSelected(tile);
  setMessage(`Hint: tap row ${Math.floor(tile/5)+1}, column ${tile%5+1}. This is a practice round; it will not count on the leaderboard.`);
 }
 async function save(){if(saved||!done)return;setBusy(true);try{if(!practice){let r=await fetch('/api/game',{signal:AbortSignal.timeout(12000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:round,moves:history})});let d:any=await r.json();if(!r.ok)throw Error(d.error);}let rec={game,left,moves:history.length,date:new Date().toISOString()},updated=[rec,...records].slice(0,100);setRecords(updated);try{localStorage.setItem('qm-history',JSON.stringify(updated));}catch{setMessage('Saved this session; browser storage is unavailable.');}setSaved(true);setMessage(practice?'Practice result saved on this device.':'Result verified. Only your best score qualifying for the top 100 is kept on the leaderboard.');loadScores(game);}catch(e:any){setMessage(e.message)}finally{setBusy(false)}}
 let best=records.filter(x=>x.game===game).reduce((a,x)=>Math.min(a,game!=='lights'?x.left:x.moves),Infinity);
-return <>{hintNotice.open&&<HintNotice close={hintNotice.close}/>} {active&&!saved&&!sudoku&&<DeploymentNotice/>}<header><a className="brand" href="/" aria-label="Quiet Marble home"><span className="brand-icon">✣</span> quiet marble<span className="brand-dot">.</span></a><nav><a href="#games">The games</a><a href="#scores">Leaderboard</a><a href="#guide">How to play</a></nav><div className="header-actions"><ThemeToggle/><span className="guest"><i/> No account needed</span></div></header>
+return <>{done&&game!=='lights'&&left>1&&!finishDismissed&&<GameNotice title="No more moves" close={()=>setFinishDismissed(true)}><p>{left} marbles remain. This round is complete.</p><div className="notice-actions"><button className="primary" disabled={busy||saved} onClick={save}>{saved?'Result saved':practice?'Save practice result':'Save to leaderboard'}</button><button disabled={busy} onClick={reset}>Reset game</button></div></GameNotice>}{hintProblem&&<GameNotice title="Hint guidance" close={()=>setHintProblem('')}><p>{hintProblem}</p><p>This is a practice round and will not count on the leaderboard.</p></GameNotice>}{hintNotice.open&&<HintNotice close={hintNotice.close}/>} {active&&!saved&&!sudoku&&<DeploymentNotice/>}<header><a className="brand" href="/" aria-label="Quiet Marble home"><span className="brand-icon">✣</span> quiet marble<span className="brand-dot">.</span></a><nav><a href="#games">The games</a><a href="#scores">Leaderboard</a><a href="#guide">How to play</a></nav><div className="header-actions"><ThemeToggle/><span className="guest"><i/> No account needed</span></div></header>
 <main><section className="intro"><div><p className="eyebrow">SMALL GAMES. A LITTLE HEADSPACE.</p><h1>A little focus.<br/><em>A little play.</em></h1><p className="lede">Unplug from the rush. Settle into a timeless puzzle.<br className="desktop"/> Just you, the board, and your next good move.</p></div><div className="intro-note"><span>✧</span><p>A quiet challenge<br/>for a curious mind.</p><small>FREE TO PLAY · ALWAYS YOUR PACE</small></div></section>
 <p className="total-visits" title="Visits counted since tracking began. One visit per browser every 24 hours; not a count of unique people."><strong>{totalVisits===null?'—':totalVisits.toLocaleString()}</strong> total visits <small>since tracking began</small></p>
 <p className="player-activity" title="Approximate visitors viewing the website, including you. Updates every minute; hidden or closed tabs expire after five minutes."><span aria-hidden="true">●</span> {activePlayers===null?'Activity unavailable':activePlayers===0?'No recent visitors':`${activePlayers} ${activePlayers===1?'visitor':'visitors'} active in the last 5 minutes`}</p>

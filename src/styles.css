@@ -72,3 +72,7 @@ html[data-theme="dark"]{--bg:#14221e;--ink:#e4eee5;--muted:#afc0b1;--green:#4278
 .diamond-board{border-radius:20px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
 [data-theme="dark"] .variant-picker select{background:#1d3028}[data-theme="dark"] .recent-badge{background:#304c37;color:#d4efcb;border-color:#668560}
 @media(max-width:620px){.game-tab .recent-badge{font-size:8px}.variant-picker select{max-width:100%}}
+
+/* Match the classic board's marble scale without changing other variants. */
+.triangle-board .hole{width:62%;justify-self:center;align-self:center}
+.game-notice .notice-actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.game-notice button{min-height:44px;border:1px solid var(--line);background:transparent}.game-notice::backdrop{background:#12271cbf}
