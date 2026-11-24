@@ -1,4 +1,5 @@
 import {SqlSudokuStore} from './sudoku-store.js';
+import {SqlModerationStore} from './moderation-store.js';
 import sql from 'mssql';
 import {HttpError,type Round,type Result,type Store} from './service.js';
 import type {Game} from '../../shared/game.js';
@@ -34,8 +35,8 @@ const cleanup = `
 export const ACTIVITY_TTL_MS=5*60*1000;
 export const ROUND_TTL_MS=24*60*60*1000;
 export class SqlStore implements Store{
- readonly sudoku:SqlSudokuStore;
- constructor(private connect:()=>Promise<sql.ConnectionPool>=pool){this.sudoku=new SqlSudokuStore(connect)}
+ readonly sudoku:SqlSudokuStore;readonly moderation:SqlModerationStore;
+ constructor(private connect:()=>Promise<sql.ConnectionPool>=pool){this.sudoku=new SqlSudokuStore(connect);this.moderation=new SqlModerationStore(connect)}
  async request(){return (await this.connect()).request().input('cutoff',sql.BigInt,Date.now()-ROUND_TTL_MS)}
  // A separate short transaction keeps activity polling independent of score cleanup.
  async activity(heartbeat?:{player:string;id?:string}):Promise<number>{
@@ -116,10 +117,12 @@ export class SqlStore implements Store{
  }
  async leaderboard(game:Game){
   const result=await(await this.request()).input('game',sql.VarChar(10),game).query(`${begin}${cleanup}
-   SELECT TOP(100) LOWER(CONVERT(varchar(36),player)) player,
-    COALESCE(display_name,'Player '+LOWER(LEFT(CONVERT(varchar(36),player),6))) name,remaining_count [left],moves,seconds
-   FROM dbo.rounds WHERE game=@game AND finished=1
-   ORDER BY remaining_count,moves,seconds,started,id;
+   SELECT TOP(100) LOWER(CONVERT(varchar(36),r.player)) player,
+    CASE WHEN r.display_name IS NULL OR h.player IS NOT NULL THEN 'Player '+LOWER(LEFT(CONVERT(varchar(36),r.player),6)) ELSE r.display_name END name,
+    r.remaining_count [left],r.moves,r.seconds
+   FROM dbo.rounds r LEFT JOIN dbo.hidden_names h ON h.player=r.player
+   WHERE r.game=@game AND r.finished=1
+   ORDER BY r.remaining_count,r.moves,r.seconds,r.started,r.id;
    COMMIT;`);
   return result.recordset;
  }

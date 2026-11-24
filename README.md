@@ -318,3 +318,97 @@ Links use `https://www.quietmarblegames.com/?game=<key>#games`; supported keys a
 marble, triangle, diamond, lights and sudoku. Unknown values default to English.
 Opening a link selects the game but does not auto-start a round or import a score.
 No database migration, account integration or new environment variables needed.
+
+### Mobile app support (backend)
+
+The Quiet Marble mobile app (iOS and Android) uses the same `/api/game`
+endpoint and the same leaderboard tables as the website. This section covers
+the backend changes it needs; the app itself is built separately.
+
+**App identity (no cookies).** Native apps send no `Origin` header. A POST with
+no `Origin` and the header `X-QM-Client: app` is treated as an app request:
+- The response to `start`, `sudoku-start` and `report-name` includes a
+  `playerToken` (`<player id>.<signature>`) instead of setting a cookie. The app
+  keeps it in secure device storage and sends it back as `X-QM-Player-Token`.
+- Tokens are signed with `SESSION_SECRET` like cookies, but with a different
+  signature, so a cookie value does not work as a token or the other way round.
+  Cookies sent with app requests are ignored.
+- Website rules are unchanged: browser POSTs must still come from
+  `ALLOWED_ORIGIN`. A web page on another site always sends its own `Origin`, so
+  it is still rejected even if it adds the app header. The origin check exists
+  to stop cookie-based request forgery; app requests carry no cookies, so there
+  is nothing to forge. As before, anonymous play cannot prove a human is playing.
+- `{action:"visit"}` returns 400 for the app; visitor counts are website-only.
+- Uninstalling the app or clearing its data creates a new anonymous player, just
+  like clearing browser cookies. Website and app players are separate identities.
+
+**Nickname filter.** `shared/player-name.ts` holds the shared nickname rules. On
+top of the existing character rules, the server now rejects profanity and slurs
+(including look-alike spellings such as `sh1t` or `f u c k`), web addresses,
+and names that impersonate the game or its staff, with the message *"Please
+choose a different name."* Leaderboard reads also screen names saved before the
+filter existed, showing the anonymous label instead. The list is best-effort,
+mostly English, and can be extended in that one file; reports cover the rest.
+
+**Reporting names.** `POST /api/game` with
+`{action:"report-name", board:"marble"|"triangle"|"diamond"|"lights"|"sudoku", player:"<player id from the leaderboard>"}`.
+- Only a custom name currently on that board can be reported (404 otherwise).
+  Players cannot report themselves. One report per reporter per name; at most
+  20 reports per reporter per day (429 after that).
+- After **3** different players report a name, it is hidden automatically: every
+  leaderboard shows `Player xxxxxx` for that player, and their future rounds use
+  the anonymous label. **Scores are never deleted** by hiding.
+- Reports are kept for 30 days. They store the reported player ID, the reporter's
+  anonymous ID, the board, the reported name and the time. No IP addresses.
+
+**Moderation endpoint.** `/api/moderation` lets you review and act on reports.
+It is disabled (503) until the `MODERATION_TOKEN` app setting is set. Each
+request must send the token in the `X-QM-Moderation-Token` header.
+- `GET /api/moderation`: lists reported and hidden names.
+- `POST /api/moderation` with JSON `{"action":"hide","player":"<id>"}` hides a
+  name now; `"restore"` shows it again; `"dismiss"` clears reports without
+  hiding. Hide, restore and dismiss all clear that player's reports.
+
+#### Deploying the mobile backend update
+
+Do these in order, after this change is merged to `main`:
+
+1. **Update the database.** In Azure Portal, open the `quiet-marble-db` SQL
+   database, then **Query editor**, and sign in as the database admin. Paste the
+   whole of `infra/schema.sql` and run it. (Or run
+   `npm --prefix api run db:migrate` with admin credentials, as before.) It is
+   additive and safe to rerun: it creates `dbo.name_reports` and
+   `dbo.hidden_names` and grants `qm_app` access. Existing scores are unchanged.
+   Deploy the code only after this step: leaderboard reads use the new table.
+2. **Create a moderation token.** Generate a random secret of at least 32
+   characters in your password manager (or `openssl rand -hex 32`). Do not
+   commit it or paste it into chat.
+3. **Add the app setting.** Static Web App → **Environment variables** →
+   Production → add `MODERATION_TOKEN` with that secret → **Apply**. No other
+   settings change; `SESSION_SECRET` must stay the same.
+4. **Deploy.** GitHub → Actions → **Deploy Azure beta** → **Run workflow** on
+   `main`.
+5. **Check.**
+   - The website works as before: ranked play, nicknames, leaderboards.
+   - A nickname such as `sh1t` is refused with "Please choose a different name."
+   - `GET https://www.quietmarblegames.com/api/moderation` without the token
+     returns 401 (503 means the setting is missing).
+   - With the token, it returns `{"reports":[]}`:
+
+```bash
+curl -H "X-QM-Moderation-Token: YOUR_TOKEN" https://www.quietmarblegames.com/api/moderation
+```
+
+To hide a name from the leaderboard yourself (the player ID is the `player`
+value in the leaderboard JSON or the moderation list):
+
+```bash
+curl -X POST -H "X-QM-Moderation-Token: YOUR_TOKEN" -H "Content-Type: application/json" -d '{"action":"hide","player":"PLAYER_ID"}' https://www.quietmarblegames.com/api/moderation
+```
+
+On Windows PowerShell, use `curl.exe` instead of `curl`, and wrap the `-d`
+JSON in double quotes with escaped inner quotes:
+`-d "{\"action\":\"hide\",\"player\":\"PLAYER_ID\"}"`.
+
+Rollback: revert the merge commit and redeploy. The two new tables can stay;
+the old code ignores them.

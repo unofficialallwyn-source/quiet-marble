@@ -3,11 +3,14 @@ import type {SudokuStore} from './sudoku-store.js';
 import {createHmac,randomUUID,timingSafeEqual} from 'node:crypto';
 import {unavailable,type FailureLog,type FailureOperation} from './diagnostics.js';
 import {initial,move,remaining,ended,isGame,type Game} from '../../shared/game.js';
+import {checkPlayerName,isNameAllowed,anonymousName} from '../../shared/player-name.js';
+import {isBoard,type ModerationStore} from './moderation.js';
 export class HttpError extends Error {constructor(public status:number,message:string){super(message)}}
 export interface Round{id:string;player:string;game:Game;started:number;finished:boolean;displayName?:string|null}
 export interface Result{left:number;moves:number;seconds:number}
 export interface Store{
  sudoku?:SudokuStore;
+ moderation?:ModerationStore;
  start(round:Round):Promise<void>;
  get(id:string,player:string):Promise<Round|null>;
  finish(id:string,player:string,result:Result):Promise<boolean>;
@@ -15,14 +18,25 @@ export interface Store{
  totalVisits():Promise<number>;
  activity(heartbeat?:{player:string;id?:string}):Promise<number>;
 }
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+// Names saved before a filter update are still screened when leaderboards are read.
+const screen=(rows:unknown[])=>rows.map((row:any)=>row&&typeof row.player==='string'&&typeof row.name==='string'&&row.name!==anonymousName(row.player)&&!isNameAllowed(row.name)?{...row,name:anonymousName(row.player)}:row);
 export function createHandler(store:Store,config:{secret:string;origin:string;now?:()=>number}){
  if(config.secret.length<32)throw Error('SESSION_SECRET must contain at least 32 characters');
  const origin=new URL(config.origin).origin,now=config.now??Date.now;
  const sign=(id:string)=>createHmac('sha256',config.secret).update(id).digest('hex');
+ // App tokens use a separate signature so a website cookie value is not an app token.
+ const signApp=(id:string)=>createHmac('sha256',config.secret).update('app-player:'+id).digest('hex');
+ const verified=(id:string,signature:string,signer:(id:string)=>string)=>timingSafeEqual(Buffer.from(signer(id),'hex'),Buffer.from(signature,'hex'))?id:null;
  function identity(req:Request,cookieName='qm_player'){
   const value=req.headers.get('cookie')?.match(new RegExp('(?:^|;\\s*)'+cookieName+'=([a-f0-9-]{36})\\.([a-f0-9]{64})(?:;|$)'));
-  if(!value)return null;
-  return timingSafeEqual(Buffer.from(sign(value[1]),'hex'),Buffer.from(value[2],'hex'))?value[1]:null;
+  return value?verified(value[1],value[2],sign):null;
+ }
+ // The mobile app keeps its signed token in secure device storage and sends it in
+ // a header. It never uses cookies, so cookies on app requests are ignored.
+ function appIdentity(req:Request){
+  const value=req.headers.get('x-qm-player-token')?.match(/^([a-f0-9-]{36})\.([a-f0-9]{64})$/);
+  return value?verified(value[1],value[2],signApp):null;
  }
  const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
  return async(req:Request,log?:FailureLog):Promise<Response>=>{
@@ -30,7 +44,7 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
   try{
    if(req.method==='GET'){
     if(new URL(req.url).searchParams.get('game')==='sudoku'){
-     operation='leaderboard';if(!store.sudoku)throw Error('Sudoku unavailable');return json({scores:await store.sudoku.leaderboard()});
+     operation='leaderboard';if(!store.sudoku)throw Error('Sudoku unavailable');return json({scores:screen(await store.sudoku.leaderboard())});
     }
     if(new URL(req.url).searchParams.get('action')==='activity'){
      operation='activity';return json({count:await store.activity(),total:await store.totalVisits()});
@@ -38,16 +52,22 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
     const game=new URL(req.url).searchParams.get('game')||'marble';
     if(!isGame(game))return json({error:'Unknown game'},400);
     operation='leaderboard';
-    return json({scores:await store.leaderboard(game)});
+    return json({scores:screen(await store.leaderboard(game))});
    }
    if(req.method!=='POST')return json({error:'Method not allowed'},405);
-   if(req.headers.get('origin')!==origin)return json({error:'Invalid origin'},403);
+   // Browsers always send Origin on POST, so the website must match ALLOWED_ORIGIN.
+   // Native apps send no Origin; they identify themselves with X-QM-Client: app and
+   // use header tokens instead of cookies, so cross-site request forgery cannot apply.
+   const source=req.headers.get('origin'),app=source===null&&req.headers.get('x-qm-client')==='app';
+   if(source!==origin&&!app)return json({error:'Invalid origin'},403);
    if(!req.headers.get('content-type')?.startsWith('application/json'))return json({error:'Expected JSON'},415);
    if(Number(req.headers.get('content-length'))>30000)return json({error:'Request too large'},413);
    const raw=await req.text();
    if(Buffer.byteLength(raw)>30000)return json({error:'Request too large'},413);
    let body:any;try{body=JSON.parse(raw)}catch{return json({error:'Invalid JSON'},400)}
    if(!body||typeof body!=='object')return json({error:'Invalid request'},400);
+   // Website-only counter; the app shows no visitor counts.
+   if(body.action==='visit'&&app)return json({error:'Not available in the app'},400);
    if(body.action==='visit'){
     operation='activity';
     const visitor=identity(req,'qm_visitor');
@@ -58,22 +78,42 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
     response.headers.set('Set-Cookie',`qm_visitor=${id}.${sign(id)}; HttpOnly; ${origin.startsWith('https:')?'Secure; ':''}SameSite=Lax; Path=/; Max-Age=86400`);
     return response;
    }
-   let player=identity(req);
+   let player=app?appIdentity(req):identity(req);
+   // Website: signed HttpOnly cookie. App: the same signed value returned in the body.
+   const remember=(data:object,id:string)=>{
+    if(app)return json({...data,playerToken:`${id}.${signApp(id)}`});
+    const response=json(data);
+    response.headers.set('Set-Cookie',`qm_player=${id}.${sign(id)}; HttpOnly; ${origin.startsWith('https:')?'Secure; ':''}SameSite=Lax; Path=/; Max-Age=31536000`);
+    return response;
+   };
+   // A name hidden after reports stays hidden: later rounds use the anonymous label.
+   const chosenName=async(name:string)=>name&&player&&await store.moderation?.isHidden(player)?'':name;
+   if(body.action==='report-name'){
+    if(!store.moderation)throw Error('Reports unavailable');
+    if(!isBoard(body.board))return json({error:'Unknown leaderboard'},400);
+    const target=typeof body.player==='string'?body.player.toLowerCase():'';
+    if(!UUID.test(target))return json({error:'Invalid player'},400);
+    player??=randomUUID();
+    if(target===player)return json({error:'You cannot report your own name'},400);
+    operation='report';
+    const outcome=await store.moderation.report({player:target,reporter:player,board:body.board,now:now()});
+    if(outcome==='not-found')return json({error:'That name is no longer on this leaderboard'},404);
+    if(outcome==='limited')return json({error:'You have sent a lot of reports today. Please try again tomorrow.'},429);
+    return remember({ok:true,hidden:outcome==='hidden'},player);
+   }
    if(typeof body.action==='string'&&body.action.startsWith('sudoku-')){
     if(!store.sudoku)throw Error('Sudoku unavailable');
     const view=(s:SudokuSession)=>{const {player:_,updated:__,...publicState}=s;return publicState};
     if(body.action==='sudoku-start'){
      if(!Number.isInteger(body.level)||body.level<0||body.level>3)return json({error:'Choose a difficulty'},400);
-     if(body.name!=null&&typeof body.name!=='string')return json({error:'Enter a valid player name'},400);
-     const nickname=(body.name??'').trim().replace(/ +/g,' ');
-     if(nickname.length>24||(nickname&&!/^[\p{L}\p{M}\p{N} .'-]+$/u.test(nickname)))return json({error:'Use up to 24 characters: letters, numbers, spaces, dots, apostrophes or hyphens.'},400);
-     player??=randomUUID();
-     const session:SudokuSession={id:randomUUID(),player,name:nickname||`Player ${player.slice(0,6)}`,startLevel:body.level,level:body.level,wins:0,seconds:0,puzzle:makePuzzle(body.level),started:0,solved:false,updated:now()};
+     const checked=checkPlayerName(body.name);
+     if(!checked.ok)return json({error:checked.error},400);
      operation='start';
+     const nickname=await chosenName(checked.name);
+     player??=randomUUID();
+     const session:SudokuSession={id:randomUUID(),player,name:nickname||anonymousName(player),startLevel:body.level,level:body.level,wins:0,seconds:0,puzzle:makePuzzle(body.level),started:0,solved:false,updated:now()};
      if(!await store.sudoku.start(session))return json({error:'Please wait a moment before starting again'},429);
-     const response=json(view(session));
-     response.headers.set('Set-Cookie',`qm_player=${player}.${sign(player)}; HttpOnly; ${origin.startsWith('https:')?'Secure; ':''}SameSite=Lax; Path=/; Max-Age=31536000`);
-     return response;
+     return remember(view(session),player);
     }
     if(!player||typeof body.id!=='string'||!/^[a-f0-9-]{36}$/.test(body.id))return json({error:'Start a Sudoku streak first'},400);
     operation='get-round';
@@ -111,15 +151,13 @@ export function createHandler(store:Store,config:{secret:string;origin:string;no
    }
    if(body.action==='start'){
     if(!isGame(body.game))return json({error:'Unknown game'},400);
-    if(body.name!=null&&typeof body.name!=='string')return json({error:'Enter a valid player name'},400);
-    const displayName=(body.name??'').trim().replace(/ +/g,' ');
-    if(displayName.length>24||(displayName&&!/^[\p{L}\p{M}\p{N} .'-]+$/u.test(displayName)))return json({error:'Use up to 24 characters: letters, numbers, spaces, dots, apostrophes or hyphens.'},400);
-    player??=randomUUID();const id=randomUUID();
+    const checked=checkPlayerName(body.name);
+    if(!checked.ok)return json({error:checked.error},400);
     operation='start';
+    const displayName=await chosenName(checked.name);
+    player??=randomUUID();const id=randomUUID();
     await store.start({id,player,game:body.game,started:now(),finished:false,displayName:displayName||null});
-    const response=json({id,name:displayName||`Player ${player.slice(0,6)}`});
-    response.headers.set('Set-Cookie',`qm_player=${player}.${sign(player)}; HttpOnly; ${origin.startsWith('https:')?'Secure; ':''}SameSite=Lax; Path=/; Max-Age=31536000`);
-    return response;
+    return remember({id,name:displayName||anonymousName(player)},player);
    }
    if(!player||typeof body.id!=='string'||!/^[a-f0-9-]{36}$/.test(body.id))return json({error:'Round unavailable. Start a new round.'},400);
    operation='get-round';
