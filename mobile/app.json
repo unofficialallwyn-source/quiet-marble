@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Quiet Marble",
-    "slug": "quiet-marble",
+    "slug": "glass-orbit",
+    "owner": "quitemarblesgames",
     "scheme": "quietmarble",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -85,6 +86,9 @@
       "admob": {
         "iosBannerId": null,
         "androidBannerId": null
+      },
+      "eas": {
+        "projectId": "e02d92af-4f6e-43a5-a09f-879291167259"
       }
     },
     "primaryColor": "#315d4c"

@@ -149,34 +149,53 @@ the contact page.
    accounts must run a **closed test with at least 12 testers for 14 days**
    before production access. Plan for this, for example friends and family on
    Android.
-2. **Expo account** (free) at expo.dev.
+2. **Expo account** (free) at expo.dev, plus the one-time setup below.
 3. **AdMob account**: follow "Ads" in `mobile/README.md`. Until then the app
    shows Google's test ads, which is fine for testing.
 
 ### Build a test APK and try it on your phone
-From `mobile/` on any computer with Node 22 (Windows is fine):
 
-```bash
-npm ci
-```
+No computer setup is needed: builds start from GitHub Actions and run on
+Expo's servers.
 
-```bash
-npx eas-cli@latest login
-```
+**One time:**
+1. Done: the Expo project is **`@quitemarblesgames/glass-orbit`**. Its
+   owner, slug and Project ID are in `app.json` (`owner`, `slug`,
+   `extra.eas.projectId`); EAS requires all three to match the project. The slug
+   is internal to Expo: players see the name "Quiet Marble".
+2. expo.dev → Account settings → **Access tokens** → create a token. In GitHub →
+   repository **Settings → Environments → production**, add it as the secret
+   **`EXPO_TOKEN`**. Never paste it into chat or a file.
 
-```bash
-npx eas-cli@latest init
-```
+**Each build:**
+1. GitHub → **Actions → Build Android app → Run workflow**, branch `main`,
+   profile **preview** (APK for your phone) or **production** (AAB for Play).
+2. The job checks the app, then starts the build at Expo. Its summary page links
+   to the build. Builds usually take 10–20 minutes; the free Expo plan has a
+   monthly build allowance and may queue.
+3. On your phone, open the build link (or expo.dev → Projects → glass-orbit →
+   Builds), download the APK and install it. Android will ask you to allow
+   installs from your browser.
 
-`init` links the project to your Expo account and adds `extra.eas.projectId`
-to `app.json`. Commit that change through a PR.
+**Signing key:** the first build creates the app's Android signing key
+(keystore) automatically and stores it in your Expo account; every later build
+reuses it. Keep access to your Expo account, because this key signs every
+update. You can see it on expo.dev under the project's **Credentials → Android**.
 
-```bash
-npm run build:android:preview
-```
+**Alternative: build from the Expo website (or ask Claude).** On expo.dev, open
+the project → **GitHub** settings, install the Expo GitHub app, link
+`unofficialallwyn-source/quiet-marble` and set **Base directory** to `mobile`.
+Then **Builds → Build from GitHub** (branch `main`, Android, profile
+`preview`) starts a build without GitHub Actions. With the repository linked,
+Claude's Expo connector can also start builds and report the download link.
+(`eas.json` sets `"image": "latest"`, which GitHub-started builds require.)
 
-EAS builds in the cloud and gives you a link/QR code to an installable APK. On
-the phone, allow installing from your browser when asked.
+<details><summary>Building from a terminal instead (computer or Codespace)</summary>
+
+From `mobile/` with Node 22: `npm ci`, `npx eas-cli@latest login`, then
+`npm run build:android:preview`. Answer **Yes** if asked to generate a keystore.
+
+</details>
 
 **Phone test checklist:**
 - [ ] Icon, name and splash screen look right (light and dark mode).
@@ -191,8 +210,9 @@ the phone, allow installing from your browser when asked.
 ### Production release
 1. Put your real AdMob App ID and banner unit ID in `app.json` (see
    `mobile/README.md`) through a PR.
-2. `npm run build:android:production` builds a signed **AAB**. EAS creates and
-   keeps the upload key. Version codes increase automatically.
+2. Run **Build Android app** with profile **production** (or
+   `npm run build:android:production`) to build a signed **AAB**. Version codes
+   increase automatically.
 3. In Play Console, create the app (name, default language, **Game**, **Free**),
    complete every **App content** form above, and fill in the store listing.
 4. **Testing → Closed testing**: upload the AAB, add your testers, and roll out.

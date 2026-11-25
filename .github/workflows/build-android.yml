@@ -1,0 +1,55 @@
+name: Build Android app
+# Sends the mobile app to Expo's cloud build servers (EAS). The build itself runs
+# at Expo; this job only uploads the project and starts it, so it takes a few minutes
+# of Actions time. Download the result from expo.dev (link in the job summary).
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'preview = APK to install on a phone; production = AAB for Google Play'
+        type: choice
+        options: [preview, production]
+        default: preview
+permissions:
+  contents: read
+concurrency:
+  group: eas-android-build
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Check Expo settings
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN" || { echo '::error::Add your Expo access token as the EXPO_TOKEN secret in the production environment.'; exit 1; }
+          node -e "const id=require('./app.json').expo.extra?.eas?.projectId; if(!id){console.error('::error::app.json has no extra.eas.projectId. Add the Expo project ID first.');process.exit(1)}"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --ci
+      - name: Start EAS build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          set -o pipefail
+          npx --yes eas-cli@latest build --platform android --profile "$PROFILE" --non-interactive --no-wait | tee eas-output.txt
+          {
+            echo "### Android $PROFILE build started"
+            echo
+            grep -Eo 'https://expo\.dev/[^ ]+' eas-output.txt | sort -u | sed 's/^/- /'
+            echo
+            echo "The build runs on Expo's servers (usually 10-20 minutes)."
+            echo "Open the link above, or expo.dev > Projects > glass-orbit > Builds, to download it."
+          } >> "$GITHUB_STEP_SUMMARY"
