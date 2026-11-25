@@ -149,34 +149,46 @@ the contact page.
    accounts must run a **closed test with at least 12 testers for 14 days**
    before production access. Plan for this, for example friends and family on
    Android.
-2. **Expo account** (free) at expo.dev.
+2. **Expo account** (free) at expo.dev, plus the one-time setup below.
 3. **AdMob account**: follow "Ads" in `mobile/README.md`. Until then the app
    shows Google's test ads, which is fine for testing.
 
 ### Build a test APK and try it on your phone
-From `mobile/` on any computer with Node 22 (Windows is fine):
 
-```bash
-npm ci
-```
+No computer setup is needed: builds start from GitHub Actions and run on
+Expo's servers.
 
-```bash
-npx eas-cli@latest login
-```
+**One time:**
+1. On expo.dev, create a project with the slug **`quiet-marble`** (it must
+   match `slug` in `app.json`). Copy its **Project ID** into
+   `app.json` → `expo.extra.eas.projectId` through a PR.
+2. expo.dev → Account settings → **Access tokens** → create a token. In GitHub →
+   repository **Settings → Environments → production**, add it as the secret
+   **`EXPO_TOKEN`**. Never paste it into chat or a file.
 
-```bash
-npx eas-cli@latest init
-```
+**Each build:**
+1. GitHub → **Actions → Build Android app → Run workflow**, branch `main`,
+   profile **preview** (APK for your phone) or **production** (AAB for Play).
+2. The job checks the app, then starts the build at Expo. Its summary page links
+   to the build. Builds usually take 10–20 minutes; the free Expo plan has a
+   monthly build allowance and may queue.
+3. On your phone, open the build link (or expo.dev → Projects → quiet-marble →
+   Builds), download the APK and install it. Android will ask you to allow
+   installs from your browser.
 
-`init` links the project to your Expo account and adds `extra.eas.projectId`
-to `app.json`. Commit that change through a PR.
+**First build only:** the app's Android signing key (keystore) has to be created
+once. If the first run stops with a message about credentials or a keystore,
+create it on expo.dev under the project's **Credentials → Android** (or run
+`npx eas-cli@latest credentials -p android` once from any computer or
+Codespace). Expo then keeps it for every later build. Don't lose access to
+your Expo account: this key signs every update.
 
-```bash
-npm run build:android:preview
-```
+<details><summary>Building from a terminal instead (computer or Codespace)</summary>
 
-EAS builds in the cloud and gives you a link/QR code to an installable APK. On
-the phone, allow installing from your browser when asked.
+From `mobile/` with Node 22: `npm ci`, `npx eas-cli@latest login`, then
+`npm run build:android:preview`. Answer **Yes** if asked to generate a keystore.
+
+</details>
 
 **Phone test checklist:**
 - [ ] Icon, name and splash screen look right (light and dark mode).
@@ -191,8 +203,9 @@ the phone, allow installing from your browser when asked.
 ### Production release
 1. Put your real AdMob App ID and banner unit ID in `app.json` (see
    `mobile/README.md`) through a PR.
-2. `npm run build:android:production` builds a signed **AAB**. EAS creates and
-   keeps the upload key. Version codes increase automatically.
+2. Run **Build Android app** with profile **production** (or
+   `npm run build:android:production`) to build a signed **AAB**. Version codes
+   increase automatically.
 3. In Play Console, create the app (name, default language, **Game**, **Free**),
    complete every **App content** form above, and fill in the store listing.
 4. **Testing → Closed testing**: upload the AAB, add your testers, and roll out.
