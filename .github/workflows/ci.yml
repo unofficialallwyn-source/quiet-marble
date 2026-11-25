@@ -60,6 +60,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      # Expo's own project check (missing native peer dependencies, config schema, versions).
+      - run: npx --yes expo-doctor
       - run: npm test -- --ci
       # Bundles the app for both platforms, proving Metro can load shared/ game logic.
       - run: npm run export:check
