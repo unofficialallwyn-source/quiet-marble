@@ -8,6 +8,7 @@ import {FinishBanner,Leaderboard,NameField,ShareButton,Stats,Status,Tabs,clock,u
 import {gameInfo} from '../lib/games';
 import {personalBest,readResults,useNickname,type ResultRow} from '../lib/player';
 import {useColors} from '../lib/settings';
+import {AdBanner} from '../lib/ads';
 import {useBoardGame} from './useBoardGame';
 
 export const HINT_EXPLANATION='Hints and undo make this a practice round, which won’t count on the public leaderboard. Start a new round to play ranked again.';
@@ -53,6 +54,8 @@ export function BoardGameScreen({game}:{game:Game}){
   </View>
   <Status>{g.message}</Status>
   <ShareButton result={g.done} content={g.done?shareRound(game,g.left,g.history.length,g.seconds,g.practice):shareGame(game)}/>
+  {/* The only ad placement: below the game area, away from the game controls. */}
+  <AdBanner/>
   <Card soft>
    <Label variant="eyebrow">THE OBJECTIVE</Label>
    <Label variant="title" style={{fontSize:30,lineHeight:34}}>{info.objective}</Label>

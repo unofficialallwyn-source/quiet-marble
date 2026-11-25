@@ -7,6 +7,7 @@ import {LibreCaslonDisplay_400Regular} from '@expo-google-fonts/libre-caslon-dis
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {SettingsProvider,useSettings} from '../lib/settings';
 import {SoundProvider} from '../lib/sounds';
+import {AdsProvider} from '../lib/ads';
 import {fonts} from '../theme/colors';
 
 void SplashScreen.preventAutoHideAsync().catch(()=>{});
@@ -35,7 +36,9 @@ export default function RootLayout(){
  return <SafeAreaProvider>
   <SettingsProvider>
    <SoundProvider>
-    <Navigator/>
+    <AdsProvider>
+     <Navigator/>
+    </AdsProvider>
    </SoundProvider>
   </SettingsProvider>
  </SafeAreaProvider>;
