@@ -42,6 +42,6 @@ jobs:
             api/package-lock.json
       - run: npm ci
       - run: npm ci --prefix api
-      - run: node --import tsx --test api/tests/retention.test.ts
+      - run: node --import tsx --test api/tests/retention.test.ts api/tests/moderation.test.ts
         env:
           SQL_TEST_PASSWORD: Qm_CI_Only_2026_Test!

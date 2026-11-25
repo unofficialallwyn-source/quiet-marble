@@ -89,3 +89,29 @@ WHERE parent_object_id=OBJECT_ID('dbo.rounds') AND definition LIKE '%game%';
 IF LEN(@gameChecks)>0 EXEC sys.sp_executesql @gameChecks;
 ALTER TABLE dbo.rounds WITH CHECK ADD CONSTRAINT CK_rounds_game
  CHECK(game IN('marble','lights','triangle','diamond'));
+
+-- Leaderboard name reports (kept 30 days) and names hidden after reports or by a
+-- moderator. Hiding replaces the custom name with the anonymous label everywhere;
+-- scores are unchanged.
+IF OBJECT_ID('dbo.name_reports','U') IS NULL
+ CREATE TABLE dbo.name_reports(
+  player uniqueidentifier NOT NULL,
+  reporter uniqueidentifier NOT NULL,
+  board varchar(10) NOT NULL,
+  name nvarchar(24) NOT NULL,
+  created bigint NOT NULL,
+  CONSTRAINT PK_name_reports PRIMARY KEY(player,reporter)
+ );
+IF NOT EXISTS(SELECT 1 FROM sys.indexes WHERE name='IX_name_reports_reporter' AND object_id=OBJECT_ID('dbo.name_reports'))
+ CREATE INDEX IX_name_reports_reporter ON dbo.name_reports(reporter,created);
+IF OBJECT_ID('dbo.hidden_names','U') IS NULL
+ CREATE TABLE dbo.hidden_names(
+  player uniqueidentifier NOT NULL PRIMARY KEY,
+  hidden_at bigint NOT NULL,
+  source varchar(10) NOT NULL CHECK(source IN('reports','moderator'))
+ );
+IF DATABASE_PRINCIPAL_ID('qm_app') IS NOT NULL
+BEGIN
+ GRANT SELECT,INSERT,UPDATE,DELETE ON dbo.name_reports TO qm_app;
+ GRANT SELECT,INSERT,UPDATE,DELETE ON dbo.hidden_names TO qm_app;
+END;

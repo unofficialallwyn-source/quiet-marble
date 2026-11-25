@@ -46,6 +46,9 @@ export class SqlSudokuStore implements SudokuStore{
   return !!r.recordset[0].accepted;
  }
  async leaderboard(){const r=await(await this.request()).query(`${begin}
-  SELECT TOP(100) LOWER(CONVERT(varchar(36),player)) player,name,wins,seconds,start_level startLevel FROM dbo.sudoku_scores ORDER BY wins DESC,seconds,player;
+  SELECT TOP(100) LOWER(CONVERT(varchar(36),s.player)) player,
+   CASE WHEN h.player IS NULL THEN s.name ELSE 'Player '+LOWER(LEFT(CONVERT(varchar(36),s.player),6)) END name,
+   s.wins,s.seconds,s.start_level startLevel
+  FROM dbo.sudoku_scores s LEFT JOIN dbo.hidden_names h ON h.player=s.player ORDER BY s.wins DESC,s.seconds,s.player;
   ${end}`);return r.recordset}
 }
