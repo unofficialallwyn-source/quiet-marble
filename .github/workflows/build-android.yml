@@ -51,5 +51,5 @@ jobs:
             grep -Eo 'https://expo\.dev/[^ ]+' eas-output.txt | sort -u | sed 's/^/- /'
             echo
             echo "The build runs on Expo's servers (usually 10-20 minutes)."
-            echo "Open the link above, or expo.dev > Projects > quiet-marble > Builds, to download it."
+            echo "Open the link above, or expo.dev > Projects > glass-orbit > Builds, to download it."
           } >> "$GITHUB_STEP_SUMMARY"

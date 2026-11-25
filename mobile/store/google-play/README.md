@@ -159,9 +159,10 @@ No computer setup is needed: builds start from GitHub Actions and run on
 Expo's servers.
 
 **One time:**
-1. On expo.dev, create a project with the slug **`quiet-marble`** (it must
-   match `slug` in `app.json`). Copy its **Project ID** into
-   `app.json` → `expo.extra.eas.projectId` through a PR.
+1. Done: the Expo project is **`@quitemarblesgames/glass-orbit`**. Its
+   owner, slug and Project ID are in `app.json` (`owner`, `slug`,
+   `extra.eas.projectId`); EAS requires all three to match the project. The slug
+   is internal to Expo: players see the name "Quiet Marble".
 2. expo.dev → Account settings → **Access tokens** → create a token. In GitHub →
    repository **Settings → Environments → production**, add it as the secret
    **`EXPO_TOKEN`**. Never paste it into chat or a file.
@@ -172,7 +173,7 @@ Expo's servers.
 2. The job checks the app, then starts the build at Expo. Its summary page links
    to the build. Builds usually take 10–20 minutes; the free Expo plan has a
    monthly build allowance and may queue.
-3. On your phone, open the build link (or expo.dev → Projects → quiet-marble →
+3. On your phone, open the build link (or expo.dev → Projects → glass-orbit →
    Builds), download the APK and install it. Android will ask you to allow
    installs from your browser.
 
