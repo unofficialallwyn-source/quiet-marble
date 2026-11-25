@@ -176,12 +176,18 @@ Expo's servers.
    Builds), download the APK and install it. Android will ask you to allow
    installs from your browser.
 
-**First build only:** the app's Android signing key (keystore) has to be created
-once. If the first run stops with a message about credentials or a keystore,
-create it on expo.dev under the project's **Credentials → Android** (or run
-`npx eas-cli@latest credentials -p android` once from any computer or
-Codespace). Expo then keeps it for every later build. Don't lose access to
-your Expo account: this key signs every update.
+**Signing key:** the first build creates the app's Android signing key
+(keystore) automatically and stores it in your Expo account; every later build
+reuses it. Keep access to your Expo account, because this key signs every
+update. You can see it on expo.dev under the project's **Credentials → Android**.
+
+**Alternative: build from the Expo website (or ask Claude).** On expo.dev, open
+the project → **GitHub** settings, install the Expo GitHub app, link
+`unofficialallwyn-source/quiet-marble` and set **Base directory** to `mobile`.
+Then **Builds → Build from GitHub** (branch `main`, Android, profile
+`preview`) starts a build without GitHub Actions. With the repository linked,
+Claude's Expo connector can also start builds and report the download link.
+(`eas.json` sets `"image": "latest"`, which GitHub-started builds require.)
 
 <details><summary>Building from a terminal instead (computer or Codespace)</summary>
 
