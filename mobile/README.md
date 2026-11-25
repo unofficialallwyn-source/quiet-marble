@@ -112,8 +112,24 @@ The quickest way, before any store builds, uses the free **Expo Go** app:
 3. Scan the QR code it shows: with the Camera app on iPhone, or from inside
    Expo Go on Android.
 
-Real installable builds (Android APK, iOS TestFlight) are set up in a later
-phase with Expo EAS, which builds iOS in the cloud, so no Mac is needed.
+Expo Go can't show ads (they need the native module), so ads appear only in
+real builds.
+
+## Builds and Google Play
+
+Builds run in the cloud with Expo EAS (`eas.json`):
+
+- `npm run build:android:preview` builds an **APK** to install directly on a phone.
+- `npm run build:android:production` builds a signed **AAB** for Google Play
+  (version code increases automatically).
+
+The full Google Play kit (listing text, graphics, screenshots, answers for each
+App content form and the release checklist) is in
+[`store/google-play/README.md`](store/google-play/README.md). Icons and the
+splash screen are generated from `store/art/icon.svg` with `npm run render:art`.
+
+iOS is configured (bundle ID `com.quietmarblegames.quietmarble`) but not yet
+prepared for the App Store.
 
 ## Privacy notes for later store forms
 

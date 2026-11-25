@@ -18,7 +18,7 @@
     "android": {
       "package": "com.quietmarblegames.quietmarble",
       "adaptiveIcon": {
-        "backgroundColor": "#f7f8f2",
+        "backgroundColor": "#ece2c6",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -62,6 +62,19 @@
           "iosAppId": "ca-app-pub-3940256099942544~1458002511",
           "delayAppMeasurementInit": true
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#f7f8f2",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#14221e"
+          }
+        }
       ]
     ],
     "experiments": {
@@ -73,6 +86,7 @@
         "iosBannerId": null,
         "androidBannerId": null
       }
-    }
+    },
+    "primaryColor": "#315d4c"
   }
 }
