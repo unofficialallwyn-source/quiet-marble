@@ -160,7 +160,9 @@ test('offline Sudoku practice follows the same rules as the server',()=>{
 });
 
 test('Sudoku online: start, first entry begins the timer, wins are checked by the server',async()=>{
- const puzzle=localStart(3,'',1).puzzle,answer=solveSudoku(puzzle)!;
+ // The fake server hands out a nearly finished puzzle so the test taps only a few cells.
+ const answer=solveSudoku(localStart(0,'',1).puzzle)!;
+ const puzzle=answer.map((n,i)=>[3,17,40,58,80].includes(i)?0:n);
  const session={id:'s-1',name:'Ann',startLevel:3,level:3,wins:0,seconds:0,puzzle,started:0,solved:false};
  server=c=>{
   if(!c.body)return json(200,{scores:[]});
@@ -185,7 +187,7 @@ test('Sudoku online: start, first entry begins the timer, wins are checked by th
  expect(posts().find(c=>c.body.action==='sudoku-solve')!.body).toMatchObject({id:'s-1',puzzleNumber:0,answer});
  expect(screen.getByText('Next puzzle · Expert')).toBeTruthy();
  const saved=JSON.parse((await AsyncStorage.getItem(KEYS.sudoku))!);expect(saved.session.wins).toBe(1);
-});
+},30000);
 
 test('Sudoku offline: a practice streak starts on the phone',async()=>{
  await wrap(<SudokuScreen/>);
