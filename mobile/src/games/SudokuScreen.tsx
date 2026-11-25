@@ -7,6 +7,7 @@ import {Button,Card,Choice,Label,Screen} from '../components/ui';
 import {FinishBanner,Leaderboard,NameField,ShareButton,Stats,Status,clock,useLeaderboard} from '../components/game-parts';
 import {useNickname} from '../lib/player';
 import {useColors} from '../lib/settings';
+import {AdBanner} from '../lib/ads';
 import {fonts} from '../theme/colors';
 import {useSudoku} from './useSudoku';
 
@@ -57,6 +58,8 @@ export function SudokuScreen(){
   </Card>}
   <Status>{s.busy?'Please wait…':s.message}</Status>
   <ShareButton result={!!session?.solved} content={session?.solved?shareSudoku(session):shareGame('sudoku')}/>
+  {/* The only ad placement: below the game area, away from the game controls. */}
+  <AdBanner/>
   <Card soft>
    <Label variant="eyebrow">THE OBJECTIVE</Label>
    <Label variant="title" style={{fontSize:30,lineHeight:34}}>Nine numbers. No repeats.</Label>

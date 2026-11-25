@@ -44,6 +44,42 @@ The games follow the website's rules exactly, using the same `shared/` code:
   the website (phones have no background worker here), so very unusual positions
   may report "No winning route found within the hint search limit".
 
+## Ads (Google AdMob)
+
+One banner, **below the game area only** (after the board, controls and Share
+button), on the Marble, Lights Out and Sudoku screens. No ads on the home or
+settings screens, and no full-screen ads. `src/lib/ads.tsx` sets this up:
+
+- Every request is tagged **child-directed** and **under the age of consent**,
+  with ad content capped at **G**, and asks for **non-personalised** ads only.
+- No App Tracking Transparency prompt on iOS; the Android advertising-ID
+  permission is removed in `app.json`.
+- Google's consent message (UMP) runs before ads load where the law requires
+  it; **Settings → Ad privacy choices** appears when Google says it's needed.
+- If consent isn't given, or no ad loads, nothing is shown and no space is left.
+- Ads are off in Expo Go and on the web (the native module isn't there), so
+  ads only appear in real builds (Phase 5).
+
+**Test IDs until approval.** `app.json` currently uses Google's sample AdMob
+app IDs, and banners use Google's test unit. To switch to real ads after your
+AdMob apps are approved:
+
+1. In AdMob, add two apps (Android and iOS) named Quiet Marble, then create one
+   **Banner** ad unit in each.
+2. In `app.json`, replace `androidAppId` and `iosAppId` under the
+   `react-native-google-mobile-ads` plugin with your App IDs (`ca-app-pub-…~…`).
+3. Set `extra.admob.androidBannerId` and `extra.admob.iosBannerId` to your banner
+   unit IDs (`ca-app-pub-…/…`). Development builds always use test ads.
+4. In AdMob, for each app: **App settings → Child-directed treatment: tag all
+   requests**, and **Blocking controls → Content → Maximum ad content rating: G**.
+5. In AdMob **Privacy & messaging**, create a **European regulations (GDPR)**
+   message for both apps and publish it.
+6. AdMob will ask for an `app-ads.txt` file on the website listed in the stores.
+   Copy the line AdMob gives you into `public/app-ads.txt` (website repo root),
+   then redeploy the site.
+
+Never click your own live ads; test on devices with test ads.
+
 ## Checks
 
 From this folder, with Node 22:
