@@ -1,6 +1,7 @@
 import {createContext,useCallback,useContext,useEffect,useState,type ReactNode} from 'react';
 import {Platform,View} from 'react-native';
-import Constants,{ExecutionEnvironment} from 'expo-constants';
+import Constants from 'expo-constants';
+import {loadAds,type Ads} from './ads-module';
 import {Label} from '../components/ui';
 
 // Google AdMob, set up for an all-ages audience:
@@ -8,13 +9,6 @@ import {Label} from '../components/ui';
 // - ad content is capped at G (general audiences),
 // - only non-personalised ads are requested, and there is no tracking prompt.
 // Ads need the native module, so they are off in Expo Go, on the web and in tests.
-type Ads=typeof import('react-native-google-mobile-ads');
-function loadAds():Ads|null{
- if(Platform.OS==='web'||Constants.executionEnvironment===ExecutionEnvironment.StoreClient)return null;
- // Loaded lazily so Expo Go and the web never touch the missing native module.
- // eslint-disable-next-line @typescript-eslint/no-require-imports
- try{return require('react-native-google-mobile-ads') as Ads}catch{return null}
-}
 
 export const CHILD_SAFE={tagForChildDirectedTreatment:true,tagForUnderAgeOfConsent:true} as const;
 
