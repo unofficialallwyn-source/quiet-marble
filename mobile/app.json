@@ -57,6 +57,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "apiBase": "https://www.quietmarblegames.com"
     }
   }
 }

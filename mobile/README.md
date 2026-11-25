@@ -17,8 +17,32 @@ Bundle ID / package: `com.quietmarblegames.quietmarble` (permanent once publishe
 | `src/lib/sounds.tsx` | Game sounds (same CC0 samples as the website) |
 | `src/lib/storage.ts` | Device storage; the leaderboard token goes in secure storage |
 | `src/lib/games.ts` | The list of games and their rules |
+| `src/games/` | Game logic hooks and screens (Marble Solitaire, Lights Out, Sudoku) |
+| `src/components/boards.tsx` | Marble boards (English, Triangle, Mini Diamond) and the Lights Out grid |
+| `src/components/game-parts.tsx` | Nickname field, stats, leaderboard with Report, share, finish banner |
+| `src/lib/api.ts` | Leaderboard API client (app token, offline detection) |
+| `src/lib/player.ts` | Nickname, personal results and personal best on the phone |
 | `assets/sounds/` | Sound files, credits and licences |
 | `metro.config.js` | Lets the app import `../shared` |
+
+## How play works
+
+The games follow the website's rules exactly, using the same `shared/` code:
+
+- **Ranked rounds:** the first move (or Start game) asks the server for a ranked
+  round. Finishing and tapping **Save to leaderboard** sends the moves, which the
+  server replays to verify. Hints or undo turn a round into practice.
+- **Offline:** if the server can't be reached, the round is a practice round
+  (marked *Offline practice*). It plays normally and is saved on the phone only.
+  Sudoku does the same with a practice streak generated on the phone.
+- **Leaderboards** are the website's top-100 boards. Other players' custom
+  names have a ⋯ button to report them; anonymous labels and your own name don't.
+- **Nicknames** are checked on the phone with the same rules as the server, and
+  remembered on the phone. Personal results (last 100) stay on the phone.
+- **Sudoku** streaks are saved on the phone and resumed when the app reopens.
+- **Hints** on the English marble board search a smaller number of positions than
+  the website (phones have no background worker here), so very unusual positions
+  may report "No winning route found within the hint search limit".
 
 ## Checks
 

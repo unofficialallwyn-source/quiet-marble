@@ -9,6 +9,7 @@ export const KEYS={
  name:'qm-name',              // optional nickname
  history:'qm-history',        // personal results (JSON array, newest first)
  hintExplained:'qm-hint-explained',
+ sudoku:'qm-sudoku',          // current Sudoku streak and entries, to resume
 } as const;
 export type StorageKey=typeof KEYS[keyof typeof KEYS];
 
