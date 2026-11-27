@@ -136,6 +136,8 @@ prepared for the App Store.
 - No microphone, background audio, camera, location, contacts or file access.
   Android permissions are limited to internet, vibration and audio settings
   (none show a prompt); the rest are removed in `app.json`.
-- Game sounds follow the phone's silent switch and never pause other audio.
+- Game sounds never pause other audio. On iPhone they follow the silent switch;
+  on Android they follow the media volume (Android's ringer and vibrate modes
+  don't mute game sounds, as in other Android games).
 - Settings, nickname and personal results stay on the device. The only
   identifier is the anonymous leaderboard token, kept in secure storage.

@@ -1,4 +1,5 @@
 import {createContext,useCallback,useContext,useEffect,useRef,type ReactNode} from 'react';
+import {Platform} from 'react-native';
 import {createAudioPlayer,setAudioModeAsync,type AudioPlayer} from 'expo-audio';
 import {useSettings} from './settings';
 
@@ -10,6 +11,8 @@ const sources:Record<Sound,number>={
  marble:require('../../assets/sounds/marble.wav'),
 };
 const volumes:Record<Sound,number>={'switch-on':0.4,'switch-off':0.4,marble:0.5};
+/** Whether sounds play while the phone is silent: on Android yes (media volume controls them). */
+export const SILENT_MODE_PLAYS=Platform.OS==='android';
 const POOL=2; // Two players per sound so quick taps can overlap.
 
 type Play=(sound:Sound)=>void;
@@ -20,8 +23,10 @@ export function SoundProvider({children}:{children:ReactNode}){
  const players=useRef<Partial<Record<Sound,AudioPlayer[]>>>({});
  const cursor=useRef(0);
  useEffect(()=>{
-  // Game effects respect the silent switch and never pause the player's music.
-  void setAudioModeAsync({playsInSilentMode:false,interruptionMode:'mixWithOthers',shouldPlayInBackground:false}).catch(()=>{});
+  // Game effects never pause the player's music. On iPhone they respect the silent
+  // switch. On Android, playsInSilentMode:false would also mute them whenever the
+  // phone is on vibrate, so they follow the media volume like other Android games.
+  void setAudioModeAsync({playsInSilentMode:SILENT_MODE_PLAYS,interruptionMode:'mixWithOthers',shouldPlayInBackground:false}).catch(()=>{});
   for(const sound of Object.keys(sources) as Sound[]){
    players.current[sound]=Array.from({length:POOL},()=>{
     const player=createAudioPlayer(sources[sound]);
