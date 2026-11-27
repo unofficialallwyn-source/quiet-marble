@@ -6,6 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 export const KEYS={
  sound:'qm-sound',            // 'on' | 'off'
  theme:'qm-theme',            // 'system' | 'light' | 'dark'
+ colorTheme:'qm-color-theme', // 'sage' | 'mint' | 'lavender' | 'dusky' | 'sky'
  name:'qm-name',              // optional nickname
  history:'qm-history',        // personal results (JSON array, newest first)
  hintExplained:'qm-hint-explained',
