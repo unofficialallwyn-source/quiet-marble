@@ -87,7 +87,8 @@
       "apiBase": "https://www.quietmarblegames.com",
       "admob": {
         "iosBannerId": null,
-        "androidBannerId": null
+        "androidBannerId": null,
+        "bannerEnabled": false
       },
       "eas": {
         "projectId": "e02d92af-4f6e-43a5-a09f-879291167259"
