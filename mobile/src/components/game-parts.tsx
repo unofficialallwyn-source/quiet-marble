@@ -105,7 +105,7 @@ export function Tabs<T extends string>({value,onChange,options}:{value:T;onChang
  const colors=useColors();
  return <View accessibilityRole="tablist" style={[styles.tabs,{borderColor:colors.line}]}>
   {options.map(o=>{const on=o.value===value;return <Pressable key={o.value} accessibilityRole="tab" accessibilityState={{selected:on}} onPress={()=>onChange(o.value)}
-   style={[styles.tab,on&&{borderBottomColor:colors.green}]}><Label style={{fontFamily:on?fonts.medium:fonts.body,color:on?colors.ink:colors.muted}}>{o.label}</Label></Pressable>})}
+   style={[styles.tab,on&&{borderBottomColor:colors.primary}]}><Label style={{fontFamily:on?fonts.medium:fonts.body,color:on?colors.ink:colors.muted}}>{o.label}</Label></Pressable>})}
  </View>;
 }
 

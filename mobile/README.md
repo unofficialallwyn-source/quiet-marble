@@ -12,7 +12,7 @@ Bundle ID / package: `com.quietmarblegames.quietmarble` (permanent once publishe
 | --- | --- |
 | `src/app/` | Screens (Expo Router: each file is a route) |
 | `src/components/ui.tsx` | Shared buttons, cards, text styles |
-| `src/theme/colors.ts` | Light/dark colours matching the website |
+| `src/theme/colors.ts` | Colour themes (Sage, Mint, Lavender, Dusky pink, Sky blue), each light and dark |
 | `src/lib/settings.tsx` | Sound on/off and appearance, saved on the device |
 | `src/lib/sounds.tsx` | Game sounds (same CC0 samples as the website) |
 | `src/lib/storage.ts` | Device storage; the leaderboard token goes in secure storage |

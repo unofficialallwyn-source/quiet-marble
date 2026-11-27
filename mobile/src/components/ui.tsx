@@ -35,8 +35,8 @@ export function Card({children,style,soft}:{children:ReactNode;style?:StyleProp<
 export function Button({title,primary,style,...props}:PressableProps&{title:string;primary?:boolean;style?:StyleProp<ViewStyle>}){
  const colors=useColors();
  return <Pressable accessibilityRole="button" {...props} style={({pressed})=>[styles.button,
-  {borderColor:primary?colors.green:colors.line,backgroundColor:primary?colors.green:'transparent',opacity:props.disabled?0.45:pressed?0.75:1},style]}>
-  <Text style={{fontFamily:fonts.medium,fontSize:15,color:primary?colors.onGreen:colors.ink}}>{title}</Text>
+  {borderColor:primary?colors.primary:colors.line,backgroundColor:primary?colors.primary:'transparent',opacity:props.disabled?0.45:pressed?0.75:1},style]}>
+  <Text style={{fontFamily:fonts.medium,fontSize:15,color:primary?colors.onPrimary:colors.ink}}>{title}</Text>
  </Pressable>;
 }
 
@@ -45,8 +45,8 @@ export function Choice<T extends string>({options,value,onChange,label}:{options
  const colors=useColors();
  return <View accessibilityRole="radiogroup" accessibilityLabel={label} style={[styles.choice,{borderColor:colors.line}]}>
   {options.map(o=>{const chosen=o.value===value;return <Pressable key={o.value} accessibilityRole="radio" accessibilityState={{checked:chosen}}
-   onPress={()=>onChange(o.value)} style={[styles.option,chosen&&{backgroundColor:colors.green}]}>
-   <Text style={{fontFamily:chosen?fonts.medium:fonts.body,fontSize:14,color:chosen?colors.onGreen:colors.ink}}>{o.label}</Text>
+   onPress={()=>onChange(o.value)} style={[styles.option,chosen&&{backgroundColor:colors.primary}]}>
+   <Text style={{fontFamily:chosen?fonts.medium:fonts.body,fontSize:14,color:chosen?colors.onPrimary:colors.ink}}>{o.label}</Text>
   </Pressable>})}
  </View>;
 }
