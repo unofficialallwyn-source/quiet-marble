@@ -1,5 +1,8 @@
 // First import: installs the fatal-error handler before the rest of the app loads.
 import {CrashGuard} from '../components/CrashGuard';
+// Expo Observe: records native crashes and unhandled JavaScript errors (sent on the next launch).
+// Imported after CrashGuard so its error handler records an error before CrashGuard shows it.
+import 'expo-observe';
 import {useEffect} from 'react';
 import {Stack,SplashScreen} from 'expo-router';
 import {StatusBar} from 'expo-status-bar';
