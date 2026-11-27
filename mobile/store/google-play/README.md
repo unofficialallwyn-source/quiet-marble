@@ -199,7 +199,7 @@ From `mobile/` with Node 22: `npm ci`, `npx eas-cli@latest login`, then
 
 **Phone test checklist:**
 - [ ] Icon, name and splash screen look right (light and dark mode).
-- [ ] All five games play; hints, undo, reset and sounds work; mute works; the silent switch mutes sounds.
+- [ ] All five games play; hints, undo, reset and sounds work; the in-app Sound switch mutes them; the phone's media volume controls them.
 - [ ] A ranked Lights Out round saves, and the score appears on the website leaderboard too.
 - [ ] Airplane mode: games play as "Offline practice"; the leaderboard says it needs a connection.
 - [ ] Sudoku streak resumes after closing and reopening the app.

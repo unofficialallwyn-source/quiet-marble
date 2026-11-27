@@ -70,6 +70,7 @@ test('settings load, change and are remembered',async()=>{
 test('sounds respect the silent switch, the mute setting, and overlap quick taps',async()=>{
  await renderProbe();
  await waitFor(()=>expect(screen.getByTestId('state')).toHaveTextContent(/^true\|true\|/));
+ // Tests run as iOS: sounds respect the silent switch there (Android follows media volume).
  expect(Audio.setAudioModeAsync).toHaveBeenCalledWith(expect.objectContaining({playsInSilentMode:false,interruptionMode:'mixWithOthers'}));
  const players=(Audio as any).__players as any[];
  expect(players).toHaveLength(6);
@@ -116,4 +117,15 @@ test('settings screen changes sound and appearance',async()=>{
  await waitFor(()=>expect(routerScreen.getByRole('radio',{name:'Dark'})).toBeChecked());
  await waitFor(async()=>expect(await AsyncStorage.getItem(KEYS.theme)).toBe('dark'));
 
+});
+
+test('on Android, game sounds play at media volume even when the phone is on vibrate or silent',()=>{
+ jest.isolateModules(()=>{
+  const RN=require('react-native');
+  const original=RN.Platform.OS;
+  Object.defineProperty(RN.Platform,'OS',{value:'android',configurable:true});
+  try{expect(require('../src/lib/sounds').SILENT_MODE_PLAYS).toBe(true)}
+  finally{Object.defineProperty(RN.Platform,'OS',{value:original,configurable:true})}
+ });
+ expect(require('../src/lib/sounds').SILENT_MODE_PLAYS).toBe(false); // iOS keeps the silent switch
 });

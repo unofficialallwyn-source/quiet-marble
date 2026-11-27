@@ -1,4 +1,4 @@
-import {Linking,StyleSheet,Switch,View} from 'react-native';
+import {Linking,Platform,StyleSheet,Switch,View} from 'react-native';
 import Constants from 'expo-constants';
 import {Button,Card,Choice,Label,Screen} from '../components/ui';
 import {useSettings} from '../lib/settings';
@@ -7,6 +7,9 @@ import {useAds} from '../lib/ads';
 import type {ThemePreference} from '../theme/colors';
 
 const SITE='https://www.quietmarblegames.com';
+const SOUND_NOTE=Platform.OS==='android'
+ ?'Marble and switch sounds, at your media volume.'
+ :'Marble and switch sounds. Your phone’s silent switch also mutes them.';
 
 export default function Settings(){
  const {soundOn,setSoundOn,theme,setTheme,colors}=useSettings();
@@ -17,7 +20,7 @@ export default function Settings(){
    <View style={styles.row}>
     <View style={{flex:1}}>
      <Label variant="heading" nativeID="sound-label">Sound</Label>
-     <Label variant="small">Marble and switch sounds. Your phone’s silent mode also mutes them.</Label>
+     <Label variant="small">{SOUND_NOTE}</Label>
     </View>
     <Switch accessibilityLabelledBy="sound-label" accessibilityLabel="Sound" value={soundOn}
      onValueChange={on=>{setSoundOn(on)}} trackColor={{true:colors.green,false:colors.line}} thumbColor="#ffffff"/>
