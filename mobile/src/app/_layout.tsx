@@ -1,3 +1,5 @@
+// First import: installs the fatal-error handler before the rest of the app loads.
+import {CrashGuard} from '../components/CrashGuard';
 import {useEffect} from 'react';
 import {Stack,SplashScreen} from 'expo-router';
 import {StatusBar} from 'expo-status-bar';
@@ -33,13 +35,15 @@ function Navigator(){
 }
 
 export default function RootLayout(){
- return <SafeAreaProvider>
-  <SettingsProvider>
-   <SoundProvider>
-    <AdsProvider>
-     <Navigator/>
-    </AdsProvider>
-   </SoundProvider>
-  </SettingsProvider>
- </SafeAreaProvider>;
+ return <CrashGuard>
+  <SafeAreaProvider>
+   <SettingsProvider>
+    <SoundProvider>
+     <AdsProvider>
+      <Navigator/>
+     </AdsProvider>
+    </SoundProvider>
+   </SettingsProvider>
+  </SafeAreaProvider>
+ </CrashGuard>;
 }
