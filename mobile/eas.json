@@ -9,14 +9,16 @@
       "android": {
         "buildType": "apk",
         "image": "latest"
-      }
+      },
+      "uploadSourceMaps": true
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle",
         "image": "latest"
-      }
+      },
+      "uploadSourceMaps": true
     }
   },
   "submit": {
