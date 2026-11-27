@@ -81,17 +81,17 @@ function SudokuGrid({puzzle,values,selected,conflict,hint,disabled,onSelect}:{pu
  const {size,onLayout}=useBoardSize(460);
  const cell=Math.floor((size-4)/9);
  return <View style={{width:'100%',alignItems:'center'}} onLayout={onLayout}>
-  {size>0&&<View accessibilityLabel="Sudoku puzzle" style={[styles.grid,{width:cell*9+4,borderColor:colors.ink,backgroundColor:colors.card}]}>
+  {size>0&&<View accessibilityLabel="Sudoku puzzle" style={[styles.grid,{width:cell*9+4,borderColor:colors.highlight,backgroundColor:colors.card}]}>
    {puzzle.map((given,i)=>{
     const r=Math.floor(i/9),c=i%9,value=values[i],bad=conflict(i),hinted=hint?.index===i,chosen=selected===i;
     return <Pressable key={i} disabled={disabled} onPress={()=>onSelect(i)} accessibilityRole="button"
      accessibilityLabel={`Row ${r+1}, column ${c+1}, ${value?value:'empty'}${given?', given':''}${bad?', repeated number':''}${hinted?`, hint ${hint!.value}`:''}`}
      accessibilityState={{selected:chosen}}
-     style={[styles.cell,{width:cell,height:cell,borderColor:colors.line,
+     style={[styles.cell,{width:cell,height:cell,borderColor:colors.softLine,
       borderRightWidth:c===8?0:c%3===2?2:StyleSheet.hairlineWidth,borderBottomWidth:r===8?0:r%3===2?2:StyleSheet.hairlineWidth},
-      (c%3===2&&c<8)&&{borderRightColor:colors.ink},(r%3===2&&r<8)&&{borderBottomColor:colors.ink},
+      (c%3===2&&c<8)&&{borderRightColor:colors.highlight},(r%3===2&&r<8)&&{borderBottomColor:colors.highlight},
       chosen&&{backgroundColor:colors.soft},bad&&{backgroundColor:'#f6d6d0'},hinted&&{backgroundColor:'#fff0bd'}]}>
-     <Text style={{fontSize:cell*0.5,fontFamily:given?fonts.bold:fonts.body,color:bad?'#9b2f22':hinted&&!value?'#72500f':given?colors.ink:'#3267a3'}}>
+     <Text style={{fontSize:cell*0.5,fontFamily:given?fonts.bold:fonts.body,color:bad?'#9b2f22':hinted&&!value?'#72500f':given?colors.ink:colors.sudokuEntry}}>
       {value||(hinted?hint!.value:'')}
      </Text>
     </Pressable>;
