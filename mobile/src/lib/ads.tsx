@@ -12,9 +12,14 @@ import {Label} from '../components/ui';
 
 export const CHILD_SAFE={tagForChildDirectedTreatment:true,tagForUnderAgeOfConsent:true} as const;
 
+type AdmobExtra={iosBannerId?:string|null;androidBannerId?:string|null;bannerEnabled?:boolean};
+const admobExtra=()=>(Constants.expoConfig?.extra as {admob?:AdmobExtra}|undefined)?.admob;
+/** app.json extra.admob.bannerEnabled: set to false to stop showing the banner (ads stay initialised). */
+export const bannerEnabled=()=>admobExtra()?.bannerEnabled!==false;
+
 /** Banner unit for this platform from app.json (extra.admob); Google's test unit until real IDs are added. */
 export function bannerUnitId(ads:Ads){
- const ids=(Constants.expoConfig?.extra as {admob?:{iosBannerId?:string|null;androidBannerId?:string|null}}|undefined)?.admob;
+ const ids=admobExtra();
  const real=Platform.OS==='ios'?ids?.iosBannerId:ids?.androidBannerId;
  return __DEV__||!real?ads.TestIds.ADAPTIVE_BANNER:real;
 }
@@ -59,7 +64,7 @@ export const useAds=()=>useContext(AdsContext);
 export function AdBanner(){
  const {ready}=useAds();const ads=useContext(AdsModule);
  const [failed,setFailed]=useState(false);
- if(!ready||!ads||failed)return null;
+ if(!ready||!ads||failed||!bannerEnabled())return null;
  const {BannerAd,BannerAdSize}=ads;
  return <View style={{alignItems:'center',gap:4,marginTop:8}} accessibilityLabel="Advertisement">
   <Label variant="eyebrow" style={{fontSize:9}}>ADVERTISEMENT</Label>

@@ -71,3 +71,14 @@ test('ad privacy choices appear in Settings when Google requires them',async()=>
  expect(await screen.findByText('true|false')).toBeTruthy();
  expect(screen.queryByText('Ad privacy choices')).toBeNull();
 });
+
+test('the banner can be switched off in app.json while ads stay initialised',async()=>{
+ const config=require('expo-constants').default.expoConfig;
+ // expoConfig can't be replaced, so edit its extra settings for this test only.
+ const originalExtra=config.extra;config.extra={...originalExtra,admob:{bannerEnabled:false}};
+ try{
+  await wrap(<AdBanner/>);
+  await waitFor(()=>expect(calls().some(c=>c[0]==='init')).toBe(true));
+  expect(screen.queryByTestId('banner-ad')).toBeNull();
+ }finally{config.extra=originalExtra}
+});
